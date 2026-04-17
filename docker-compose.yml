@@ -61,7 +61,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
 
   socketio:
-    image: frappe/frappe-worker:version-14.16
+    image: frappe/erpnext:version-15
     restart: always
     command: node apps/frappe/socketio.js
     depends_on:
