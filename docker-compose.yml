@@ -1,0 +1,90 @@
+version: "3.8"
+
+services:
+  mariadb:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+
+  frappe:
+    image: frappe/frappe-worker:version-15
+    restart: always
+    depends_on:
+      - mariadb
+      - redis
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_CACHE: ${REDIS_CACHE}
+      REDIS_QUEUE: ${REDIS_QUEUE}
+      REDIS_SOCKETIO: ${REDIS_SOCKETIO}
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+
+  scheduler:
+    image: frappe/frappe-worker:version-15
+    restart: always
+    command: bench schedule
+    depends_on:
+      - frappe
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  queue-default:
+    image: frappe/frappe-worker:version-15
+    restart: always
+    command: bench worker --queue default
+    depends_on:
+      - frappe
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  queue-long:
+    image: frappe/frappe-worker:version-15
+    restart: always
+    command: bench worker --queue long
+    depends_on:
+      - frappe
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  socketio:
+    image: frappe/frappe-worker:version-15
+    restart: always
+    command: node apps/frappe/socketio.js
+    depends_on:
+      - frappe
+    ports:
+      - "${SOCKETIO_PORT}:9000"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  nginx:
+    image: frappe/nginx:version-15
+    restart: always
+    depends_on:
+      - frappe
+    ports:
+      - "${FRAPPE_PORT}:8080"
+    environment:
+      BACKEND: frappe:8000
+      SOCKETIO: socketio:9000
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+volumes:
+  mariadb-data:
+  sites:
+  logs:
