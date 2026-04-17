@@ -55,17 +55,14 @@ services:
       - sites:/home/frappe/frappe-bench/sites
 
   nginx:
-    image: frappe/nginx:version-15
+    image: nginx:alpine
     restart: always
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - frappe
-    ports:
-      - "8000:8080"
-    environment:
-      BACKEND: frappe:8000
-      SOCKETIO: socketio:9000
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
 
 volumes:
   mariadb-data:
