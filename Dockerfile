@@ -1,9 +1,10 @@
-FROM frappe/erpnext:version-15
+FROM frappe/erpnext:version-16
 
 USER root
 
 # Install git (needed for app fetch)
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN pip install pymysql
 
 USER frappe
 
