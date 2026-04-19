@@ -15,10 +15,10 @@ bench set-redis-socketio-host redis-socketio:6379
 
 bench get-app mail
 
-bench new-site mail.localhost \
+bench new-site mail.techvision.edu.et \
   --mariadb-root-password $DB_ROOT_PASSWORD \
   --admin-password $ADMIN_PASSWORD \
   --install-app mail
 
-bench --site mail.localhost set-config developer_mode 0
-bench --site mail.localhost clear-cache
+bench --site mail.techvision.edu.et set-config developer_mode 0
+bench --site mail.techvision.edu.et clear-cache
