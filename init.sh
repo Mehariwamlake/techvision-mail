@@ -38,8 +38,8 @@ if [ ! -d "sites/$SITE_NAME" ]; then
     echo "🌐 Creating site: $SITE_NAME"
 
     bench new-site $SITE_NAME \
-        --mariadb-root-password ${DB_ROOT_PASSWORD:-frappepassword} \
-        --admin-password ${ADMIN_PASSWORD:-admin} \
+        --mariadb-root-password $DB_ROOT_PASSWORD \
+        --admin-password $ADMIN_PASSWORD \
         --no-mariadb-socket
 fi
 
