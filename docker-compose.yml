@@ -110,8 +110,8 @@ services:
       - frappe
 
 volumes:
-  mariadb-data:
-  sites:
+  - sites:/home/frappe/frappe-bench/sites
+  - logs:/home/frappe/frappe-bench/logs
 
 networks:
   frappe:
