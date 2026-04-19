@@ -1,5 +1,7 @@
 version: "3.7"
+
 name: mail
+
 services:
   mariadb:
     image: mariadb:10.8
@@ -7,26 +9,39 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --skip-character-set-client-handshake
-      - --skip-innodb-read-only-compressed # Temporary fix for MariaDB 10.6
+      - --skip-innodb-read-only-compressed
     environment:
       MYSQL_ROOT_PASSWORD: frappepassword
     volumes:
       - mariadb-data:/var/lib/mysql
 
-  redis:
+  redis-cache:
+    image: redis:alpine
+
+  redis-queue:
+    image: redis:alpine
+
+  redis-socketio:
     image: redis:alpine
 
   frappe:
-    image: frappe/bench:latest
+    image: frappe/erpnext:v16
     command: bash /workspace/init.sh
     environment:
-      - SHELL=/bin/bash
+      SHELL: /bin/bash
+      DB_HOST: mariadb
+      DB_ROOT_PASSWORD: frappepassword
     working_dir: /home/frappe
     volumes:
       - .:/workspace
     ports:
-      - 8000:8000
-      - 9000:9000
+      - "8000:8000"
+      - "9000:9000"
+    depends_on:
+      - mariadb
+      - redis-cache
+      - redis-queue
+      - redis-socketio
 
 volumes:
   mariadb-data:
