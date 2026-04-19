@@ -1,37 +1,161 @@
-version: "3.7"
-name: mail
+version: "3.8"
+
+name: techvision-mail
+
 services:
+
+  # -------------------------
+  # DATABASE
+  # -------------------------
   mariadb:
     image: mariadb:10.8
+    container_name: mariadb
+    restart: always
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --skip-character-set-client-handshake
-      - --skip-innodb-read-only-compressed # Temporary fix for MariaDB 10.6
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    env_file:
-      - .env
     volumes:
       - mariadb-data:/var/lib/mysql
+    networks:
+      - frappe-net
 
-  redis:
-    image: redis:alpine
 
-  frappe:
+  # -------------------------
+  # REDIS (3 instances)
+  # -------------------------
+  redis-cache:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - frappe-net
 
-    image: frappe/bench:latest
-    command: bash /workspace/init.sh
+  redis-queue:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - frappe-net
+
+  redis-socketio:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - frappe-net
+
+
+  # -------------------------
+  # BACKEND (FRAPPE)
+  # -------------------------
+  backend:
+    image: frappe/erpnext:v16
+    container_name: frappe-backend
+    restart: always
+    working_dir: /home/frappe/frappe-bench
+    command: bash -c "
+      pip install pymysql &&
+      bench set-config -g db_driver pymysql &&
+      bench start
+    "
     environment:
-      - SHELL=/bin/bash
-    working_dir: /home/frappe
+      SHELL: /bin/bash
     env_file:
       - .env
     volumes:
-      - .:/workspace
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    depends_on:
+      - mariadb
+      - redis-cache
+      - redis-queue
+      - redis-socketio
     ports:
-      - 8000:8000
-      - 9000:9000
+      - "8000:8000"
+      - "9000:9000"
+    networks:
+      - frappe-net
 
+
+  # -------------------------
+  # FRONTEND BUILDER (OPTIONAL BUT CLEAN)
+  # -------------------------
+  mail-frontend-builder:
+    image: node:20-bullseye
+    container_name: mail-frontend-builder
+    working_dir: /app
+    volumes:
+      - ./apps/mail:/app
+    command: >
+      bash -c "
+        corepack enable &&
+        cd frontend &&
+        yarn install &&
+        bun install &&
+        bun run build
+      "
+    networks:
+      - frappe-net
+    profiles: ["build"]
+
+
+  # -------------------------
+  # SCHEDULER
+  # -------------------------
+  scheduler:
+    image: frappe/erpnext:v16
+    restart: always
+    command: bench schedule
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+    networks:
+      - frappe-net
+
+
+  # -------------------------
+  # WORKER (DEFAULT QUEUE)
+  # -------------------------
+  worker:
+    image: frappe/erpnext:v16
+    restart: always
+    command: bench worker --queue default
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+    networks:
+      - frappe-net
+
+
+  # -------------------------
+  # SOCKETIO
+  # -------------------------
+  socketio:
+    image: frappe/erpnext:v16
+    restart: always
+    command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
+    ports:
+      - "9001:9001"
+    depends_on:
+      - backend
+    networks:
+      - frappe-net
+
+
+# -------------------------
+# VOLUMES
+# -------------------------
 volumes:
   mariadb-data:
+  sites:
+  logs:
+
+
+# -------------------------
+# NETWORK
+# -------------------------
+networks:
+  frappe-net:
+    driver: bridge
