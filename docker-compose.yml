@@ -97,7 +97,7 @@ services:
       - frappe
 
   nginx:
-    image: frappe/frappe-nginx:v15
+    image: frappe/erpnext:v15
     ports:
       - "8082:8080"
     volumes:
