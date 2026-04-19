@@ -1,5 +1,3 @@
-version: "3.9"
-
 x-common-image: &common_image
   image: frappe/erpnext:version-15
   pull_policy: always
@@ -52,7 +50,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
 
   frappe:
-    image: frappe/nginx:version-15
+    image: frappe/erpnext-nginx:version-15
     depends_on:
       - backend
     env_file:
