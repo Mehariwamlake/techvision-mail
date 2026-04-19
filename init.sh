@@ -1,39 +1,24 @@
-#!bin/bash
+#!/bin/bash
+set -e
 
-if [ -d "/home/frappe/frappe-bench/apps/frappe" ]; then
-    echo "Bench already exists, skipping init"
-    cd frappe-bench
-    bench start
-else
-    echo "Creating new bench..."
+if [ ! -d "frappe-bench" ]; then
+    echo "Initializing bench..."
+    bench init frappe-bench --frappe-branch version-15 --skip-redis-config-generation
 fi
-
-bench init --skip-redis-config-generation frappe-bench
 
 cd frappe-bench
 
-# Use containers instead of localhost
 bench set-mariadb-host mariadb
-bench set-redis-cache-host redis://redis:6379
-bench set-redis-queue-host redis://redis:6379
-bench set-redis-socketio-host redis://redis:6379
+bench set-redis-cache-host redis-cache:6379
+bench set-redis-queue-host redis-queue:6379
+bench set-redis-socketio-host redis-socketio:6379
 
-# Remove redis, watch from Procfile
-sed -i '/redis/d' ./Procfile
-sed -i '/watch/d' ./Procfile
-
-bench get-app mail --branch develop
+bench get-app mail
 
 bench new-site mail.localhost \
-    --force \
-    --mariadb-root-password 123 \
-    --admin-password admin \
-    --mariadb-user-host-login-scope='%'
+  --mariadb-root-password $DB_ROOT_PASSWORD \
+  --admin-password $ADMIN_PASSWORD \
+  --install-app mail
 
-bench --site mail.localhost install-app mail
-bench --site mail.localhost set-config developer_mode 1
+bench --site mail.localhost set-config developer_mode 0
 bench --site mail.localhost clear-cache
-bench --site mail.localhost set-config mute_emails 1
-bench use mail.localhost
-
-bench start

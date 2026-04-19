@@ -1,120 +1,117 @@
-name: techvision-mail
+version: "3.9"
+
+name: mail
 
 services:
+  mariadb:
+    image: mariadb:10.11
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    restart: always
+    networks:
+      - frappe
+
+  redis-cache:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - frappe
+
+  redis-queue:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - frappe
+
+  redis-socketio:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - frappe
 
   backend:
-    image: frappe/erpnext:version-15
-    command: bash -c "
-      if [ ! -f /home/frappe/frappe-bench/Procfile ]; then
-        echo '🔧 Initializing bench...';
-        cd /home/frappe;
-        bench init frappe-bench --skip-redis-config-generation;
-      fi;
-
-      cd /home/frappe/frappe-bench;
-      bench start;
-    "
-    env_file:
-      - .env
+    image: frappe/erpnext:v15
+    command: /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:8000 frappe.app:application
+    environment:
+      DB_HOST: mariadb
+      REDIS_CACHE: redis-cache
+      REDIS_QUEUE: redis-queue
+      REDIS_SOCKETIO: redis-socketio
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
     depends_on:
       - mariadb
       - redis-cache
       - redis-queue
       - redis-socketio
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.erp.rule=Host(`${SITE_NAME}`)
-      - traefik.http.routers.erp.entrypoints=websecure
-      - traefik.http.routers.erp.tls.certresolver=letsencrypt
-      - traefik.http.services.erp.loadbalancer.server.port=8000
-
-  init:
-    image: frappe/erpnext:version-15
-    command: bash -c "
-      sleep 25;
-
-      cd /home/frappe/frappe-bench || true;
-
-      if [ ! -d sites/$SITE_NAME ]; then
-        echo '🚀 Creating site...';
-
-        bench set-config -g db_host $DB_HOST;
-        bench set-config -g redis_cache redis://$REDIS_CACHE;
-        bench set-config -g redis_queue redis://$REDIS_QUEUE;
-        bench set-config -g redis_socketio redis://$REDIS_SOCKETIO;
-
-        bench new-site $SITE_NAME \
-          --admin-password $ADMIN_PASSWORD \
-          --mariadb-root-password $MYSQL_ROOT_PASSWORD;
-
-        echo '📦 Installing Mail app...';
-        bench get-app https://github.com/frappe/mail;
-
-        bench --site $SITE_NAME install-app mail;
-        bench --site $SITE_NAME migrate;
-      else
-        echo '✅ Site already exists';
-      fi
-    "
-    env_file:
-      - .env
-    depends_on:
-      - mariadb
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-
-  scheduler:
-    image: frappe/erpnext:version-15
-    command: bench schedule
-    env_file:
-      - .env
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
+    restart: always
+    networks:
+      - frappe
 
   worker-default:
-    image: frappe/erpnext:version-15
+    image: frappe/erpnext:v15
     command: bench worker --queue default
-    env_file:
-      - .env
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - frappe
 
-  worker-long:
-    image: frappe/erpnext:version-15
-    command: bench worker --queue long
-    env_file:
-      - .env
+  worker-short:
+    image: frappe/erpnext:v15
+    command: bench worker --queue short
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - frappe
 
-  socketio:
-    image: frappe/erpnext:version-15
-    command: node apps/frappe/socketio.js
-    env_file:
-      - .env
+  scheduler:
+    image: frappe/erpnext:v15
+    command: bench schedule
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - frappe
 
-  mariadb:
-    image: mariadb:10.11
-    env_file:
-      - .env
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+  websocket:
+    image: frappe/erpnext:v15
+    command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
     volumes:
-      - mariadb-data:/var/lib/mysql
+      - sites:/home/frappe/frappe-bench/sites
+    restart: always
+    networks:
+      - frappe
 
-  redis-cache:
-    image: redis:7-alpine
-
-  redis-queue:
-    image: redis:7-alpine
-
-  redis-socketio:
-    image: redis:7-alpine
+  nginx:
+    image: frappe/erpnext-nginx:v15
+    ports:
+      - "8082:8080"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+      - websocket
+    restart: always
+    networks:
+      - frappe
 
 volumes:
-  sites:
   mariadb-data:
+  sites:
+
+networks:
+  frappe:
