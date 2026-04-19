@@ -1,70 +1,94 @@
+version: "3.9"
+
+x-common-image: &common_image
+  image: frappe/erpnext:version-15
+  pull_policy: always
+
 services:
-  mariadb:
-    image: mariadb:10.11
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    volumes:
-      - mariadb-data:/var/lib/mysql
+  backend:
+    <<: *common_image
+    command: >
+      bash -c "
+      bench set-config -g db_host $$DB_HOST;
+      bench set-config -g redis_cache redis://$$REDIS_CACHE;
+      bench set-config -g redis_queue redis://$$REDIS_QUEUE;
+      bench set-config -g redis_socketio redis://$$REDIS_SOCKETIO;
 
-  redis:
-    image: redis:7-alpine
-    restart: always
+      bench new-site $$SITE_NAME \
+        --admin-password $$ADMIN_PASSWORD \
+        --mariadb-root-password $$MYSQL_ROOT_PASSWORD;
 
-  frappe:
-    image: frappe/erpnext:version-15
-    restart: always
-    depends_on:
-      - mariadb
-      - redis
+      bench get-app mail;
+      bench --site $$SITE_NAME install-app mail;
+
+      bench --site $$SITE_NAME migrate;
+
+      bench start
+      "
     environment:
       DB_HOST: mariadb
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
-
-  scheduler:
-    image: frappe/erpnext:version-15
-    command: bench schedule
-    restart: always
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-
-  queue-default:
-    image: frappe/erpnext:version-15
-    command: bench worker --queue default
-    restart: always
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-
-  queue-long:
-    image: frappe/erpnext:version-15
-    command: bench worker --queue long
-    restart: always
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-
-  socketio:
-    image: frappe/erpnext:version-15
-    command: node apps/frappe/socketio.js
-    restart: always
-    ports:
-      - "9000:9000"
+      REDIS_CACHE: redis-cache:6379
+      REDIS_QUEUE: redis-queue:6379
+      REDIS_SOCKETIO: redis-socketio:6379
+      SITE_NAME: mail.techvision.edu.et
+      ADMIN_PASSWORD: admin123
+      MYSQL_ROOT_PASSWORD: root123
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
   nginx:
     image: nginx:alpine
-    restart: always
-    ports:
-      - "8000:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - frappe
+      - backend
+    volumes:
+      - sites:/var/www/html/sites
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.erp.rule=Host(`mail.techvision.edu.et`)
+      - traefik.http.routers.erp.entrypoints=websecure
+      - traefik.http.routers.erp.tls.certresolver=letsencrypt
+      - traefik.http.services.erp.loadbalancer.server.port=80
+
+  scheduler:
+    <<: *common_image
+    command: bench schedule
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  worker-default:
+    <<: *common_image
+    command: bench worker --queue default
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  worker-long:
+    <<: *common_image
+    command: bench worker --queue long
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  socketio:
+    <<: *common_image
+    command: node apps/frappe/socketio.js
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  mariadb:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+    volumes:
+      - mariadb-data:/var/lib/mysql
+
+  redis-cache:
+    image: redis:7-alpine
+
+  redis-queue:
+    image: redis:7-alpine
+
+  redis-socketio:
+    image: redis:7-alpine
 
 volumes:
-  mariadb-data:
   sites:
-  logs:
+  mariadb-data:
