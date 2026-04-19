@@ -11,7 +11,7 @@ services:
       - --skip-character-set-client-handshake
       - --skip-innodb-read-only-compressed
     environment:
-      MYSQL_ROOT_PASSWORD: frappepassword
+      MYSQL_ROOT_PASSWORD: $DB_ROOT_PASSWORD
     volumes:
       - mariadb-data:/var/lib/mysql
 
@@ -29,8 +29,8 @@ services:
     command: bash /workspace/init.sh
     environment:
       SHELL: /bin/bash
-      DB_HOST: mariadb
-      DB_ROOT_PASSWORD: frappepassword
+      DB_HOST: $DB_HOST
+      DB_ROOT_PASSWORD: DB_ROOT_PASSWORD
     working_dir: /home/frappe
     volumes:
       - .:/workspace
