@@ -17,8 +17,8 @@ bench set-redis-socketio-host "$REDIS_SOCKETIO"
 bench get-app https://github.com/frappe/mail
 
 bench new-site mail.techvision.edu.et \
-  --mariadb-root-password $DB_ROOT_PASSWORD \
-  --admin-password $ADMIN_PASSWORD \
+  --mariadb-root-password "$DB_ROOT_PASSWORD" \
+  --admin-password "$ADMIN_PASSWORD" \
   --install-app mail
 
 bench use mail.techvision.edu.et
