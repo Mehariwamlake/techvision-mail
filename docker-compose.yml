@@ -37,15 +37,18 @@ services:
 
   backend:
     image: frappe/erpnext:v16
-    command: /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:8000 frappe.app:application
+    command: >
+      bash -c "bench setup requirements &&
+               bench migrate &&
+               gunicorn -b 0.0.0.0:8000 frappe.app:application"
     environment:
       DB_HOST: mariadb
-      REDIS_CACHE: redis-cache
-      REDIS_QUEUE: redis-queue
-      REDIS_SOCKETIO: redis-socketio
+      REDIS_CACHE: redis-cache:6379
+      REDIS_QUEUE: redis-queue:6379
+      REDIS_SOCKETIO: redis-socketio:6379
     volumes:
       - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/logs
+      - logs:/home/frappe/frappe-bench/logs
     depends_on:
       - mariadb
       - redis-cache
@@ -60,6 +63,7 @@ services:
     command: bench worker --queue default
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
     depends_on:
       - backend
     restart: always
@@ -71,6 +75,7 @@ services:
     command: bench worker --queue short
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
     depends_on:
       - backend
     restart: always
@@ -82,6 +87,7 @@ services:
     command: bench schedule
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
     depends_on:
       - backend
     restart: always
