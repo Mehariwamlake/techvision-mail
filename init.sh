@@ -54,14 +54,13 @@ echo "🔨 Fixing Node/Yarn environment..."
 
 cd apps/mail
 
-# Clean broken dependencies (THIS FIXES YOUR ERROR)
-rm -rf node_modules yarn.lock
+rm -rf node_modules yarn.lock bun.lockb
 
 yarn cache clean || true
-yarn install --frozen-lockfile || yarn install
+yarn install
 
-# Verify Tailwind exists (debug safety)
-npx tailwindcss -v || echo "⚠️ Tailwind not found but continuing..."
+# Ensure tailwind exists
+yarn add -D tailwindcss postcss autoprefixer
 
 cd ../..
 
