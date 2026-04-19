@@ -26,7 +26,23 @@ cd frappe-bench
 : "${REDIS_SOCKETIO:?❌ REDIS_SOCKETIO is empty}"
 
 # -------------------------------
-# REDIS + MARIADB CONFIG
+# CREATE CONFIG FIRST (CRITICAL FIX)
+# -------------------------------
+echo "⚙️ Creating common_site_config.json..."
+
+mkdir -p sites
+
+cat > sites/common_site_config.json <<EOF
+{
+  "redis_cache": "$REDIS_CACHE",
+  "redis_queue": "$REDIS_QUEUE",
+  "redis_socketio": "$REDIS_SOCKETIO",
+  "socketio_port": 9000
+}
+EOF
+
+# -------------------------------
+# REDIS + DB CONFIG
 # -------------------------------
 echo "🔧 Configuring Redis & MariaDB..."
 
@@ -36,21 +52,44 @@ bench set-redis-queue-host "$REDIS_QUEUE"
 bench set-redis-socketio-host "$REDIS_SOCKETIO"
 
 # -------------------------------
-# CLEAN PREVIOUS APP (IMPORTANT)
+# CLEAN PREVIOUS APP
 # -------------------------------
 echo "🧹 Cleaning old mail app..."
 rm -rf apps/mail
 
 # -------------------------------
-# INSTALL MAIL APP
+# GET APP (NO BUILD)
 # -------------------------------
-echo "📥 Installing Mail app..."
-bench get-app https://github.com/frappe/mail
+echo "📥 Getting Mail app..."
+bench get-app https://github.com/frappe/mail --skip-assets
 
 # -------------------------------
-# FIX FRONTEND BUILD (IMPORTANT FIX)
+# CREATE SITE
 # -------------------------------
-echo "🔨 Fixing Node/Yarn environment..."
+echo "🏗️ Creating site..."
+
+bench new-site mail.techvision.edu.et \
+  --mariadb-root-password "$DB_ROOT_PASSWORD" \
+  --admin-password "$ADMIN_PASSWORD" \
+  --force \
+  --no-mariadb-socket
+
+bench use mail.techvision.edu.et
+
+# -------------------------------
+# INSTALL APP (NO BUILD)
+# -------------------------------
+echo "📦 Installing Mail app (no assets)..."
+
+bench --site mail.techvision.edu.et install-app mail --skip-assets
+
+# -------------------------------
+# FIX NODE ENV (ONCE ONLY)
+# -------------------------------
+echo "🔨 Preparing frontend build..."
+
+corepack enable || true
+corepack prepare yarn@stable --activate || true
 
 cd apps/mail
 
@@ -65,45 +104,15 @@ yarn add -D tailwindcss postcss autoprefixer
 cd ../..
 
 # -------------------------------
-# CREATE SITE (NO INTERACTIVE MODE)
+# BUILD (AFTER CONFIG EXISTS)
 # -------------------------------
-echo "🏗️ Creating site..."
+echo "🏗️ Building assets..."
 
-bench new-site mail.techvision.edu.et \
-  --mariadb-root-password "$DB_ROOT_PASSWORD" \
-  --admin-password "$ADMIN_PASSWORD" \
-  --force \
-  --no-mariadb-socket
-
-bench --site mail.techvision.edu.et install-app mail --skip-assets
-
-bench use mail.techvision.edu.et
-
-# -------------------------------
-# FINAL CONFIG
-# -------------------------------
-echo "🔧 Fixing Mail frontend build..."
-
-cd apps/mail
-
-# clean completely
-rm -rf node_modules yarn.lock bun.lockb
-
-# ensure yarn works correctly
-corepack enable || true
-corepack prepare yarn@stable --activate || true
-
-# install deps
-yarn install
-
-# install missing tailwind explicitly (critical)
-yarn add -D tailwindcss postcss autoprefixer
-
-cd ../..
-
-# NOW build (clean environment)
 bench build --app mail
 
+# -------------------------------
+# FINALIZE
+# -------------------------------
 bench --site mail.techvision.edu.et set-config developer_mode 0
 bench --site mail.techvision.edu.et clear-cache
 
