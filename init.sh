@@ -4,34 +4,71 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 export CI=1
 
+echo "🚀 Starting TechVision Mail deployment..."
+
+# -------------------------------
+# INIT BENCH
+# -------------------------------
 if [ ! -d "frappe-bench" ]; then
-    echo "Initializing bench..."
+    echo "📦 Initializing bench..."
     bench init frappe-bench --frappe-branch version-16 --skip-redis-config-generation
 fi
 
 cd frappe-bench
 
-# FAIL SAFE CHECKS
-if [ -z "$DB_ROOT_PASSWORD" ]; then
-  echo "❌ DB_ROOT_PASSWORD is empty"
-  exit 1
-fi
+# -------------------------------
+# FAIL SAFE ENV CHECKS
+# -------------------------------
+: "${DB_ROOT_PASSWORD:?❌ DB_ROOT_PASSWORD is empty}"
+: "${ADMIN_PASSWORD:?❌ ADMIN_PASSWORD is empty}"
+: "${REDIS_CACHE:?❌ REDIS_CACHE is empty}"
+: "${REDIS_QUEUE:?❌ REDIS_QUEUE is empty}"
+: "${REDIS_SOCKETIO:?❌ REDIS_SOCKETIO is empty}"
 
-if [ -z "$REDIS_CACHE" ]; then
-  echo "❌ REDIS_CACHE is empty"
-  exit 1
-fi
+# -------------------------------
+# REDIS + MARIADB CONFIG
+# -------------------------------
+echo "🔧 Configuring Redis & MariaDB..."
 
-# Redis setup (must be redis://)
 bench set-mariadb-host mariadb
 bench set-redis-cache-host "$REDIS_CACHE"
 bench set-redis-queue-host "$REDIS_QUEUE"
 bench set-redis-socketio-host "$REDIS_SOCKETIO"
 
-# FIX: prevent overwrite prompt
-rm -rf apps/mail || true
+# -------------------------------
+# CLEAN PREVIOUS APP (IMPORTANT)
+# -------------------------------
+echo "🧹 Cleaning old mail app..."
+rm -rf apps/mail
 
+# -------------------------------
+# INSTALL MAIL APP
+# -------------------------------
+echo "📥 Installing Mail app..."
 bench get-app https://github.com/frappe/mail
+
+# -------------------------------
+# FIX FRONTEND BUILD (IMPORTANT FIX)
+# -------------------------------
+echo "🔨 Fixing Node/Yarn environment..."
+
+cd apps/mail
+
+# Clean broken dependencies (THIS FIXES YOUR ERROR)
+rm -rf node_modules yarn.lock
+
+yarn cache clean || true
+yarn install --frozen-lockfile || yarn install
+
+# Verify Tailwind exists (debug safety)
+npx tailwindcss -v || echo "⚠️ Tailwind not found but continuing..."
+
+cd ../..
+
+# -------------------------------
+# CREATE SITE (NO INTERACTIVE MODE)
+# -------------------------------
+echo "🏗️ Creating site..."
 
 bench new-site mail.techvision.edu.et \
   --mariadb-root-password "$DB_ROOT_PASSWORD" \
@@ -42,5 +79,12 @@ bench new-site mail.techvision.edu.et \
 
 bench use mail.techvision.edu.et
 
+# -------------------------------
+# FINAL CONFIG
+# -------------------------------
+echo "⚙️ Final configuration..."
+
 bench --site mail.techvision.edu.et set-config developer_mode 0
 bench --site mail.techvision.edu.et clear-cache
+
+echo "✅ Deployment completed successfully!"
