@@ -48,16 +48,14 @@ services:
   # -------------------------
   # BACKEND (FRAPPE)
   # -------------------------
+
+
   backend:
     image: frappe/erpnext:v16
     container_name: frappe-backend
     restart: always
     working_dir: /home/frappe/frappe-bench
-    command: bash -c "
-      pip install pymysql &&
-      bench set-config -g db_driver pymysql &&
-      bench start
-    "
+    command: ["bash", "-c", "pip install pymysql && bench set-config -g db_driver pymysql && bench start"]
     environment:
       SHELL: /bin/bash
     env_file:
@@ -75,7 +73,6 @@ services:
       - "9000:9000"
     networks:
       - frappe-net
-
 
   # -------------------------
   # FRONTEND BUILDER (OPTIONAL BUT CLEAN)
