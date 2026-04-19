@@ -11,7 +11,7 @@ echo "🚀 Starting TechVision Mail deployment..."
 # -------------------------------
 if [ ! -d "frappe-bench" ]; then
     echo "📦 Initializing bench..."
-    bench init frappe-bench --frappe-branch version-16 --skip-redis-config-generation
+    bench init frappe-bench --frappe-branch version-17 --skip-redis-config-generation
 fi
 
 cd frappe-bench
