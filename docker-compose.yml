@@ -4,7 +4,16 @@ services:
 
   backend:
     image: frappe/erpnext:version-15
-    command: bench start
+    command: bash -c "
+      if [ ! -f /home/frappe/frappe-bench/Procfile ]; then
+        echo '🔧 Initializing bench...';
+        cd /home/frappe;
+        bench init frappe-bench --skip-redis-config-generation;
+      fi;
+
+      cd /home/frappe/frappe-bench;
+      bench start;
+    "
     env_file:
       - .env
     depends_on:
@@ -23,12 +32,13 @@ services:
 
   init:
     image: frappe/erpnext:version-15
-    command: >
-      bash -c "
-      sleep 20;
+    command: bash -c "
+      sleep 25;
+
+      cd /home/frappe/frappe-bench || true;
 
       if [ ! -d sites/$SITE_NAME ]; then
-        echo 'Creating site...';
+        echo '🚀 Creating site...';
 
         bench set-config -g db_host $DB_HOST;
         bench set-config -g redis_cache redis://$REDIS_CACHE;
@@ -39,15 +49,15 @@ services:
           --admin-password $ADMIN_PASSWORD \
           --mariadb-root-password $MYSQL_ROOT_PASSWORD;
 
-        bench get-app mail;
+        echo '📦 Installing Mail app...';
+        bench get-app https://github.com/frappe/mail;
 
         bench --site $SITE_NAME install-app mail;
-
         bench --site $SITE_NAME migrate;
       else
-        echo 'Site already exists';
+        echo '✅ Site already exists';
       fi
-      "
+    "
     env_file:
       - .env
     depends_on:
