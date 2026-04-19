@@ -72,16 +72,37 @@ echo "🏗️ Creating site..."
 bench new-site mail.techvision.edu.et \
   --mariadb-root-password "$DB_ROOT_PASSWORD" \
   --admin-password "$ADMIN_PASSWORD" \
-  --install-app mail \
   --force \
   --no-mariadb-socket
+
+bench --site mail.techvision.edu.et install-app mail --skip-assets
 
 bench use mail.techvision.edu.et
 
 # -------------------------------
 # FINAL CONFIG
 # -------------------------------
-echo "⚙️ Final configuration..."
+echo "🔧 Fixing Mail frontend build..."
+
+cd apps/mail
+
+# clean completely
+rm -rf node_modules yarn.lock bun.lockb
+
+# ensure yarn works correctly
+corepack enable || true
+corepack prepare yarn@stable --activate || true
+
+# install deps
+yarn install
+
+# install missing tailwind explicitly (critical)
+yarn add -D tailwindcss postcss autoprefixer
+
+cd ../..
+
+# NOW build (clean environment)
+bench build --app mail
 
 bench --site mail.techvision.edu.et set-config developer_mode 0
 bench --site mail.techvision.edu.et clear-cache
