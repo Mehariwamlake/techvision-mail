@@ -1,80 +1,52 @@
-version: "3.9"
+#!/bin/bash
+set -e
 
-services:
+export DEBIAN_FRONTEND=noninteractive
+export CI=1
+export SKIP_ASSETS_BUILD=1
 
-  # -------------------------
-  # DATABASE
-  # -------------------------
-  mariadb:
-    image: mariadb:10.11
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-    volumes:
-      - mariadb_data:/var/lib/mysql
+echo "🚀 Starting TechVision Mail deployment..."
 
-  # -------------------------
-  # REDIS
-  # -------------------------
-  redis:
-    image: redis:7-alpine
+if [ ! -d "frappe-bench" ]; then
+    bench init frappe-bench --frappe-branch version-17 --skip-redis-config-generation
+fi
 
-  # -------------------------
-  # FRONTEND BUILDER (ONE-TIME)
-  # -------------------------
-  builder:
-    image: node:20
-    working_dir: /workspace
-    volumes:
-      - .:/workspace
-      - mail_assets:/assets
-    command: >
-      bash -c "
-        echo '📥 Cloning mail...' &&
-        rm -rf mail &&
-        git clone https://github.com/frappe/mail mail &&
+cd frappe-bench
 
-        cd mail &&
-        corepack enable &&
-        yarn install &&
-        yarn build &&
+: "${DB_ROOT_PASSWORD:?❌ DB_ROOT_PASSWORD is empty}"
+: "${ADMIN_PASSWORD:?❌ ADMIN_PASSWORD is empty}"
+: "${REDIS_CACHE:?❌ REDIS_CACHE is empty}"
+: "${REDIS_QUEUE:?❌ REDIS_QUEUE is empty}"
+: "${REDIS_SOCKETIO:?❌ REDIS_SOCKETIO is empty}"
 
-        echo '📦 Copying assets...' &&
-        mkdir -p /assets/mail &&
-        cp -r public/* /assets/mail/
+echo "🔧 Configuring services..."
 
-        echo '✅ Build complete'
-      "
+bench set-mariadb-host mariadb
+bench set-redis-cache-host "$REDIS_CACHE"
+bench set-redis-queue-host "$REDIS_QUEUE"
+bench set-redis-socketio-host "$REDIS_SOCKETIO"
 
-  # -------------------------
-  # BACKEND (NO BUILD)
-  # -------------------------
-  backend:
-    image: frappe/erpnext:version-16
-    depends_on:
-      - mariadb
-      - redis
-    working_dir: /home/frappe
-    volumes:
-      - mail_assets:/home/frappe/frappe-bench/sites/assets/mail
-      - .:/workspace
-    env_file:
-      - .env
-    command: bash /workspace/init.sh
-    ports:
-      - "8000:8000"
+# 🔥 REQUIRED FIX
+bench set-config -g socketio_port 9000
 
-  # -------------------------
-  # SOCKETIO (OPTIONAL)
-  # -------------------------
-  socketio:
-    image: frappe/erpnext:version-16
-    command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
-    depends_on:
-      - backend
-      - redis
-    env_file:
-      - .env
+echo "🧹 Cleaning old mail app..."
+rm -rf apps/mail
 
-volumes:
-  mariadb_data:
-  mail_assets:
+echo "📥 Installing Mail app..."
+bench get-app https://github.com/frappe/mail
+
+echo "🏗️ Creating site..."
+
+bench new-site mail.techvision.edu.et \
+  --mariadb-root-password "$DB_ROOT_PASSWORD" \
+  --admin-password "$ADMIN_PASSWORD" \
+  --force
+
+bench --site mail.techvision.edu.et install-app mail
+
+bench use mail.techvision.edu.et
+
+bench --site mail.techvision.edu.et set-config developer_mode 0
+bench --site mail.techvision.edu.et clear-cache
+
+echo "✅ DONE"
