@@ -1,15 +1,18 @@
-FROM frappe/erpnext:version-16
+FROM frappe/erpnext:version-15
 
 USER root
 
-# Install git (needed for app fetch)
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
-RUN pip install pymysql
+# Install git + dependencies (safe minimal layer)
+RUN apt-get update && apt-get install -y \
+    git \
+    python3-dev \
+    default-libmysqlclient-dev \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
 
 USER frappe
 
-# Get Mail app at build time (NOT runtime)
-RUN bench get-app https://github.com/frappe/mail
+WORKDIR /home/frappe/frappe-bench
 
-# Build assets (important)
-RUN bench build
+# ⚠️ DO NOT install apps or build here
+# Apps must be installed at container runtime OR via entrypoint script
