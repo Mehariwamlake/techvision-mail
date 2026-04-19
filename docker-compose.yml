@@ -36,7 +36,7 @@ services:
       - frappe
 
   backend:
-    image: frappe/erpnext:v15
+    image: frappe/erpnext:v16
     command: /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:8000 frappe.app:application
     environment:
       DB_HOST: mariadb
@@ -55,7 +55,7 @@ services:
       - frappe
 
   worker-default:
-    image: frappe/erpnext:v15
+    image: frappe/erpnext:v16
     command: bench worker --queue default
     volumes:
       - sites:/home/frappe/frappe-bench/sites
@@ -66,7 +66,7 @@ services:
       - frappe
 
   worker-short:
-    image: frappe/erpnext:v15
+    image: frappe/erpnext:v16
     command: bench worker --queue short
     volumes:
       - sites:/home/frappe/frappe-bench/sites
@@ -77,7 +77,7 @@ services:
       - frappe
 
   scheduler:
-    image: frappe/erpnext:v15
+    image: frappe/erpnext:v16
     command: bench schedule
     volumes:
       - sites:/home/frappe/frappe-bench/sites
@@ -88,7 +88,7 @@ services:
       - frappe
 
   websocket:
-    image: frappe/erpnext:v15
+    image: frappe/erpnext:v16
     command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
     volumes:
       - sites:/home/frappe/frappe-bench/sites
@@ -97,7 +97,7 @@ services:
       - frappe
 
   nginx:
-    image: frappe/erpnext:v15
+    image: frappe/erpnext:v16
     ports:
       - "8082:8080"
     volumes:
