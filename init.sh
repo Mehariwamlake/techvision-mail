@@ -1,59 +1,25 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting Frappe Bench Setup..."
-
-BENCH_PATH="/home/frappe/frappe-bench"
-
-# 1. Create bench if not exists
-if [ ! -d "$BENCH_PATH" ]; then
-    echo "📦 Initializing bench..."
-    bench init $BENCH_PATH \
-        --frappe-branch version-16 \
-        --skip-redis-config-generation
+if [ ! -d "frappe-bench" ]; then
+    echo "Initializing bench..."
+    bench init frappe-bench --frappe-branch version-16 --skip-redis-config-generation
 fi
 
-cd $BENCH_PATH
+cd frappe-bench
 
-# 2. Force correct Redis config (IMPORTANT FIX)
-echo "⚙️ Setting Redis configuration..."
-
-mkdir -p sites
-
-cat > sites/common_site_config.json <<EOF
-{
-  "redis_cache": "redis://redis-cache:6379",
-  "redis_queue": "redis://redis-queue:6379",
-  "redis_socketio": "redis://redis-socketio:6379"
-}
-EOF
-
-# 3. Set MariaDB host
 bench set-mariadb-host mariadb
+bench set-redis-cache-host redis-cache:6379
+bench set-redis-queue-host redis-queue:6379
+bench set-redis-socketio-host redis-socketio:6379
 
-# 4. Create site (only if not exists)
-SITE_NAME=${SITE_NAME:-mail.techvision.edu.et}
+bench get-app https://github.com/frappe/mail
 
-if [ ! -d "sites/$SITE_NAME" ]; then
-    echo "🌐 Creating site: $SITE_NAME"
+bench new-site mail.techvision.edu.et \
+  --mariadb-root-password $DB_ROOT_PASSWORD \
+  --admin-password $ADMIN_PASSWORD \
+  --install-app mail
+bench use mail.techvision.edu.et
 
-    bench new-site $SITE_NAME \
-        --mariadb-root-password $DB_ROOT_PASSWORD \
-        --admin-password $ADMIN_PASSWORD \
-        --no-mariadb-socket
-fi
-
-# 5. Install app safely
-echo "📦 Installing mail app..."
-
-bench get-app mail || true
-bench --site $SITE_NAME install-app mail || true
-
-# 6. Set site as default
-bench use $SITE_NAME
-
-# 7. Final config
-bench --site $SITE_NAME set-config developer_mode 0
-bench --site $SITE_NAME clear-cache
-
-echo "✅ Setup complete!"
+bench --site mail.techvision.edu.et set-config developer_mode 0
+bench --site mail.techvision.edu.et clear-cache
