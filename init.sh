@@ -10,9 +10,9 @@ cd frappe-bench
 
 # IMPORTANT: ensure variables include redis://
 bench set-mariadb-host mariadb
-bench set-redis-cache-host ${REDIS_CACHE}
-bench set-redis-queue-host ${REDIS_QUEUE}
-bench set-redis-socketio-host ${REDIS_SOCKETIO}
+bench set-redis-cache-host "$REDIS_CACHE"
+bench set-redis-queue-host "$REDIS_QUEUE"
+bench set-redis-socketio-host "$REDIS_SOCKETIO"
 
 bench get-app https://github.com/frappe/mail
 
