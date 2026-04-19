@@ -1,17 +1,34 @@
-x-common-image: &common_image
-  image: frappe/erpnext:version-15
-  pull_policy: always
+name: techvision-mail
 
 services:
+
+  backend:
+    image: frappe/erpnext:version-15
+    command: bench start
+    env_file:
+      - .env
+    depends_on:
+      - mariadb
+      - redis-cache
+      - redis-queue
+      - redis-socketio
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.erp.rule=Host(`${SITE_NAME}`)
+      - traefik.http.routers.erp.entrypoints=websecure
+      - traefik.http.routers.erp.tls.certresolver=letsencrypt
+      - traefik.http.services.erp.loadbalancer.server.port=8000
+
   init:
-    <<: *common_image
+    image: frappe/erpnext:version-15
     command: >
       bash -c "
-      echo '⏳ Waiting for DB...';
       sleep 20;
 
       if [ ! -d sites/$SITE_NAME ]; then
-        echo '🚀 Creating site...';
+        echo 'Creating site...';
 
         bench set-config -g db_host $DB_HOST;
         bench set-config -g redis_cache redis://$REDIS_CACHE;
@@ -23,11 +40,12 @@ services:
           --mariadb-root-password $MYSQL_ROOT_PASSWORD;
 
         bench get-app mail;
+
         bench --site $SITE_NAME install-app mail;
 
         bench --site $SITE_NAME migrate;
       else
-        echo '✅ Site already exists';
+        echo 'Site already exists';
       fi
       "
     env_file:
@@ -36,40 +54,9 @@ services:
       - mariadb
     volumes:
       - sites:/home/frappe/frappe-bench/sites
-  backend:
-    <<: *common_image
-    command: bench start
-    env_file:
-      - .env
-    depends_on:
-      - mariadb
-      - redis-cache
-      - redis-queue
-      - redis-socketio
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-
-  frappe:
-    image: frappe/erpnext-nginx:version-15
-    depends_on:
-      - backend
-    env_file:
-      - .env
-    environment:
-      BACKEND: backend:8000
-      SOCKETIO: socketio:9000
-      SITE_NAME: ${SITE_NAME}
-    volumes:
-      - sites:/var/www/html/sites
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.erp.rule=Host(`${SITE_NAME}`)
-      - traefik.http.routers.erp.entrypoints=websecure
-      - traefik.http.routers.erp.tls.certresolver=letsencrypt
-      - traefik.http.services.erp.loadbalancer.server.port=80
 
   scheduler:
-    <<: *common_image
+    image: frappe/erpnext:version-15
     command: bench schedule
     env_file:
       - .env
@@ -77,7 +64,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
 
   worker-default:
-    <<: *common_image
+    image: frappe/erpnext:version-15
     command: bench worker --queue default
     env_file:
       - .env
@@ -85,7 +72,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
 
   worker-long:
-    <<: *common_image
+    image: frappe/erpnext:version-15
     command: bench worker --queue long
     env_file:
       - .env
@@ -93,7 +80,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
 
   socketio:
-    <<: *common_image
+    image: frappe/erpnext:version-15
     command: node apps/frappe/socketio.js
     env_file:
       - .env
