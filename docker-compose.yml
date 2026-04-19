@@ -1,125 +1,32 @@
-version: "3.9"
-
+version: "3.7"
 name: mail
-
 services:
   mariadb:
-    image: mariadb:10.11
+    image: mariadb:10.8
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed # Temporary fix for MariaDB 10.6
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: frappepassword
     volumes:
       - mariadb-data:/var/lib/mysql
-    restart: always
-    networks:
-      - frappe
 
-  redis-cache:
-    image: redis:7-alpine
-    restart: always
-    networks:
-      - frappe
+  redis:
+    image: redis:alpine
 
-  redis-queue:
-    image: redis:7-alpine
-    restart: always
-    networks:
-      - frappe
-
-  redis-socketio:
-    image: redis:7-alpine
-    restart: always
-    networks:
-      - frappe
-
-  backend:
-    image: frappe/erpnext:v16
-    command: >
-      bash -c "bench setup requirements &&
-               bench migrate &&
-               gunicorn -b 0.0.0.0:8000 frappe.app:application"
+  frappe:
+    image: frappe/bench:latest
+    command: bash /workspace/init.sh
     environment:
-      DB_HOST: mariadb
-      REDIS_CACHE: redis-cache:6379
-      REDIS_QUEUE: redis-queue:6379
-      REDIS_SOCKETIO: redis-socketio:6379
+      - SHELL=/bin/bash
+    working_dir: /home/frappe
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
-    depends_on:
-      - mariadb
-      - redis-cache
-      - redis-queue
-      - redis-socketio
-    restart: always
-    networks:
-      - frappe
-
-  worker-default:
-    image: frappe/erpnext:v16
-    command: bench worker --queue default
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
-    depends_on:
-      - backend
-    restart: always
-    networks:
-      - frappe
-
-  worker-short:
-    image: frappe/erpnext:v16
-    command: bench worker --queue short
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
-    depends_on:
-      - backend
-    restart: always
-    networks:
-      - frappe
-
-  scheduler:
-    image: frappe/erpnext:v16
-    command: bench schedule
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
-    depends_on:
-      - backend
-    restart: always
-    networks:
-      - frappe
-
-  websocket:
-    image: frappe/erpnext:v16
-    command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-    restart: always
-    networks:
-      - frappe
-
-  nginx:
-    image: frappe/erpnext:v16
+      - .:/workspace
     ports:
-      - "8082:8080"
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-    depends_on:
-      - backend
-      - websocket
-    restart: always
-    networks:
-      - frappe
+      - 8000:8000
+      - 9000:9000
 
 volumes:
   mariadb-data:
-  sites:
-  logs:
-
-networks:
-  frappe:
