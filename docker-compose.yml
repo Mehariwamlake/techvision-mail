@@ -45,6 +45,7 @@ services:
       REDIS_SOCKETIO: redis-socketio
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/logs
     depends_on:
       - mariadb
       - redis-cache
