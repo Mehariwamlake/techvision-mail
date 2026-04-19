@@ -5,46 +5,67 @@ x-common-image: &common_image
   pull_policy: always
 
 services:
-  backend:
+  init:
     <<: *common_image
     command: >
       bash -c "
-      bench set-config -g db_host $$DB_HOST;
-      bench set-config -g redis_cache redis://$$REDIS_CACHE;
-      bench set-config -g redis_queue redis://$$REDIS_QUEUE;
-      bench set-config -g redis_socketio redis://$$REDIS_SOCKETIO;
+      echo '⏳ Waiting for DB...';
+      sleep 20;
 
-      bench new-site $$SITE_NAME \
-        --admin-password $$ADMIN_PASSWORD \
-        --mariadb-root-password $$MYSQL_ROOT_PASSWORD;
+      if [ ! -d sites/$SITE_NAME ]; then
+        echo '🚀 Creating site...';
 
-      bench get-app mail;
-      bench --site $$SITE_NAME install-app mail;
+        bench set-config -g db_host $DB_HOST;
+        bench set-config -g redis_cache redis://$REDIS_CACHE;
+        bench set-config -g redis_queue redis://$REDIS_QUEUE;
+        bench set-config -g redis_socketio redis://$REDIS_SOCKETIO;
 
-      bench --site $$SITE_NAME migrate;
+        bench new-site $SITE_NAME \
+          --admin-password $ADMIN_PASSWORD \
+          --mariadb-root-password $MYSQL_ROOT_PASSWORD;
 
-      bench start
+        bench get-app mail;
+        bench --site $SITE_NAME install-app mail;
+
+        bench --site $SITE_NAME migrate;
+      else
+        echo '✅ Site already exists';
+      fi
       "
-    environment:
-      DB_HOST: mariadb
-      REDIS_CACHE: redis-cache:6379
-      REDIS_QUEUE: redis-queue:6379
-      REDIS_SOCKETIO: redis-socketio:6379
-      SITE_NAME: mail.techvision.edu.et
-      ADMIN_PASSWORD: admin123
-      MYSQL_ROOT_PASSWORD: root123
+    env_file:
+      - .env
+    depends_on:
+      - mariadb
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+  backend:
+    <<: *common_image
+    command: bench start
+    env_file:
+      - .env
+    depends_on:
+      - mariadb
+      - redis-cache
+      - redis-queue
+      - redis-socketio
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
-  nginx:
-    image: nginx:alpine
+  frappe:
+    image: frappe/nginx:version-15
     depends_on:
       - backend
+    env_file:
+      - .env
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: socketio:9000
+      SITE_NAME: ${SITE_NAME}
     volumes:
       - sites:/var/www/html/sites
     labels:
       - traefik.enable=true
-      - traefik.http.routers.erp.rule=Host(`mail.techvision.edu.et`)
+      - traefik.http.routers.erp.rule=Host(`${SITE_NAME}`)
       - traefik.http.routers.erp.entrypoints=websecure
       - traefik.http.routers.erp.tls.certresolver=letsencrypt
       - traefik.http.services.erp.loadbalancer.server.port=80
@@ -52,31 +73,41 @@ services:
   scheduler:
     <<: *common_image
     command: bench schedule
+    env_file:
+      - .env
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
   worker-default:
     <<: *common_image
     command: bench worker --queue default
+    env_file:
+      - .env
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
   worker-long:
     <<: *common_image
     command: bench worker --queue long
+    env_file:
+      - .env
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
   socketio:
     <<: *common_image
     command: node apps/frappe/socketio.js
+    env_file:
+      - .env
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
   mariadb:
     image: mariadb:10.11
+    env_file:
+      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - mariadb-data:/var/lib/mysql
 
