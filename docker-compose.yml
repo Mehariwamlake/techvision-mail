@@ -20,7 +20,7 @@ services:
 
   frappe:
 
-    image: frappe/bench:latest
+    image: frappe/erpnext:v16
     command: bash /workspace/init.sh
     environment:
       - SHELL=/bin/bash
