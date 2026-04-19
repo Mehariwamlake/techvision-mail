@@ -1,97 +1,80 @@
-#!/bin/bash
-set -e
+version: "3.9"
 
-export DEBIAN_FRONTEND=noninteractive
-export CI=1
+services:
 
-echo "🚀 Starting TechVision Mail deployment (NO BUILD MODE)..."
+  # -------------------------
+  # DATABASE
+  # -------------------------
+  mariadb:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
 
-# -------------------------------
-# INIT BENCH
-# -------------------------------
-if [ ! -d "frappe-bench" ]; then
-    bench init frappe-bench --frappe-branch version-17 --skip-redis-config-generation
-fi
+  # -------------------------
+  # REDIS
+  # -------------------------
+  redis:
+    image: redis:7-alpine
 
-cd frappe-bench
+  # -------------------------
+  # FRONTEND BUILDER (ONE-TIME)
+  # -------------------------
+  builder:
+    image: node:20
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - mail_assets:/assets
+    command: >
+      bash -c "
+        echo '📥 Cloning mail...' &&
+        rm -rf mail &&
+        git clone https://github.com/frappe/mail mail &&
 
-# -------------------------------
-# ENV CHECKS
-# -------------------------------
-: "${DB_ROOT_PASSWORD:?❌ DB_ROOT_PASSWORD is empty}"
-: "${ADMIN_PASSWORD:?❌ ADMIN_PASSWORD is empty}"
-: "${REDIS_CACHE:?❌ REDIS_CACHE is empty}"
-: "${REDIS_QUEUE:?❌ REDIS_QUEUE is empty}"
-: "${REDIS_SOCKETIO:?❌ REDIS_SOCKETIO is empty}"
+        cd mail &&
+        corepack enable &&
+        yarn install &&
+        yarn build &&
 
-# -------------------------------
-# CONFIG (must exist)
-# -------------------------------
-mkdir -p sites
+        echo '📦 Copying assets...' &&
+        mkdir -p /assets/mail &&
+        cp -r public/* /assets/mail/
 
-cat > sites/common_site_config.json <<EOF
-{
-  "redis_cache": "$REDIS_CACHE",
-  "redis_queue": "$REDIS_QUEUE",
-  "redis_socketio": "$REDIS_SOCKETIO",
-  "socketio_port": 9000
-}
-EOF
+        echo '✅ Build complete'
+      "
 
-# -------------------------------
-# DB + REDIS
-# -------------------------------
-bench set-mariadb-host mariadb
-bench set-redis-cache-host "$REDIS_CACHE"
-bench set-redis-queue-host "$REDIS_QUEUE"
-bench set-redis-socketio-host "$REDIS_SOCKETIO"
+  # -------------------------
+  # BACKEND (NO BUILD)
+  # -------------------------
+  backend:
+    image: frappe/erpnext:version-16
+    depends_on:
+      - mariadb
+      - redis
+    working_dir: /home/frappe
+    volumes:
+      - mail_assets:/home/frappe/frappe-bench/sites/assets/mail
+      - .:/workspace
+    env_file:
+      - .env
+    command: bash /workspace/init.sh
+    ports:
+      - "8000:8000"
 
-# -------------------------------
-# CLEAN APP
-# -------------------------------
-rm -rf apps/mail
+  # -------------------------
+  # SOCKETIO (OPTIONAL)
+  # -------------------------
+  socketio:
+    image: frappe/erpnext:version-16
+    command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
+    depends_on:
+      - backend
+      - redis
+    env_file:
+      - .env
 
-# -------------------------------
-# GET APP (NO BUILD)
-# -------------------------------
-bench get-app https://github.com/frappe/mail --skip-assets
-
-# 🚨 CRITICAL: DISABLE BUILD COMMANDS
-echo "🚫 Disabling frontend build..."
-
-cat > apps/mail/package.json <<EOF
-{
-  "name": "mail",
-  "version": "1.0.0",
-  "scripts": {}
-}
-EOF
-
-# -------------------------------
-# CREATE SITE
-# -------------------------------
-bench new-site mail.techvision.edu.et \
-  --mariadb-root-password "$DB_ROOT_PASSWORD" \
-  --admin-password "$ADMIN_PASSWORD" \
-  --force \
-  --no-mariadb-socket
-
-bench use mail.techvision.edu.et
-
-# -------------------------------
-# INSTALL APP (NO BUILD)
-# -------------------------------
-bench --site mail.techvision.edu.et install-app mail --skip-assets
-
-# -------------------------------
-# SKIP BUILD COMPLETELY
-# -------------------------------
-echo "⏭️ Skipping bench build..."
-
-# -------------------------------
-# FINALIZE
-# -------------------------------
-bench --site mail.techvision.edu.et set-config developer_mode 0
-bench --site mail.techvision.edu.et clear-cache
-
-echo "✅ Mail deployed WITHOUT frontend build!"
+volumes:
+  mariadb_data:
+  mail_assets:
