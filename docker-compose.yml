@@ -115,16 +115,8 @@ services:
   # -------------------------
   backend:
     image: frappe/erpnext:v16
-    restart: always
-    working_dir: /home/frappe/frappe-bench
     command: bench start
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
-    depends_on:
-      - init
-    networks:
-      - frappe-net
+    working_dir: /home/frappe/frappe-bench
 
 
   # -------------------------
@@ -152,10 +144,8 @@ services:
   socketio:
     image: frappe/erpnext:v16
     restart: always
-    command: bench socketio
-    depends_on:
-      - redis-socketio
-      - backend
+    working_dir: /home/frappe/frappe-bench
+    command: node apps/frappe/socketio.js
     volumes:
       - sites:/home/frappe/frappe-bench/sites
     networks:
