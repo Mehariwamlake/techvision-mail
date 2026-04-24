@@ -59,6 +59,8 @@ services:
       bash -c "
         pip install pymysql &&
         bench set-config -g db_driver pymysql &&
+        bench use mail.techvision.edu.et &&
+        bench set-default-site mail.techvision.edu.et &&
         bench migrate &&
         gunicorn -b 0.0.0.0:8000 frappe.app:application --workers 2 --threads 4
       "    

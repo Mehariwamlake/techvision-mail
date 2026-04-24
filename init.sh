@@ -26,6 +26,9 @@ bench set-redis-cache-host "$REDIS_CACHE"
 bench set-redis-queue-host "$REDIS_QUEUE"
 bench set-redis-socketio-host "$REDIS_SOCKETIO"
 # 🔥 REQUIRED FIX
+bench set-config -g redis_socketio "$REDIS_SOCKETIO"
+bench set-config -g redis_cache "$REDIS_CACHE"
+bench set-config -g redis_queue "$REDIS_QUEUE"
 bench set-config -g socketio_port 9000
 
 echo "🧹 Cleaning old mail app..."
