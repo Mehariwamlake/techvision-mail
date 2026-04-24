@@ -49,6 +49,10 @@ services:
     restart: "no"
     working_dir: /home/frappe/frappe-bench
     entrypoint: bash
+    environment:
+      REDIS_CACHE: redis-cache:6379
+      REDIS_QUEUE: redis-queue:6379
+      REDIS_SOCKETIO: redis-socketio:6379
     command: >
       -c '
       set -e;
@@ -141,19 +145,19 @@ services:
       - frappe-net
     profiles: ["build"]
 
-    
+
   # -------------------------
   # SOCKET.IO (REALTIME)
   # -------------------------
   socketio:
     image: frappe/erpnext:v16
     restart: always
-    command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
-    environment:
-      REDIS_SOCKETIO: ${REDIS_SOCKETIO}
+    command: bench socketio
     depends_on:
       - redis-socketio
       - backend
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
     networks:
       - frappe-net
 
@@ -162,6 +166,7 @@ services:
   # -------------------------
   worker-default:
     image: frappe/erpnext:v16
+    working_dir: /home/frappe/frappe-bench
     restart: always
     command: bench worker --queue default
     volumes:
@@ -173,6 +178,7 @@ services:
 
   worker-short:
     image: frappe/erpnext:v16
+    working_dir: /home/frappe/frappe-bench
     restart: always
     command: bench worker --queue short
     volumes:
@@ -184,6 +190,7 @@ services:
 
   worker-long:
     image: frappe/erpnext:v16
+    working_dir: /home/frappe/frappe-bench
     restart: always
     command: bench worker --queue long
     volumes:
