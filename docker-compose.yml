@@ -157,7 +157,7 @@ socketio:
   working_dir: /home/frappe/frappe-bench
   command: node apps/frappe/socketio.js
   volumes:
-    - frappe-bench:/home/frappe/frappe-bench
+    - sites:/home/frappe/frappe-bench/sites
   networks:
     - frappe-net
 
@@ -224,6 +224,8 @@ socketio:
 # -------------------------
 volumes:
   mariadb-data:
+  sites:
+  logs:
   frappe-bench:
 
     # -------------------------
