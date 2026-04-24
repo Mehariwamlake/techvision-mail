@@ -57,6 +57,9 @@ services:
 
       if [ ! -d sites/mail.techvision.edu.et ]; then
         echo '🚀 Creating site...';
+        echo "REDIS_CACHE=$REDIS_CACHE"
+        echo "REDIS_QUEUE=$REDIS_QUEUE"
+        echo "REDIS_SOCKETIO=$REDIS_SOCKETIO"
 
         bench new-site mail.techvision.edu.et \
           --db-host mariadb \
