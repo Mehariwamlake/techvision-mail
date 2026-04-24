@@ -134,12 +134,12 @@ services:
     restart: always
     command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
     ports:
-      - "9001:9001"
+      - "9000:9000"
     depends_on:
       - backend
+      - redis
     networks:
       - frappe-net
-
 
 # -------------------------
 # VOLUMES
