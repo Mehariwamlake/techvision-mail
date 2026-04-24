@@ -52,14 +52,19 @@ services:
     entrypoint: bash
     command: >
       -c "
-      echo '⏳ Waiting for DB...';
-      sleep 10;
+      echo "⏳ Waiting for MariaDB..."
+
+      until mysqladmin ping -h mariadb --silent; do
+        sleep 2;
+      done
+
+      echo "REDIS_CACHE=$REDIS_CACHE"
+      echo "REDIS_QUEUE=$REDIS_QUEUE"
+      echo "REDIS_SOCKETIO=$REDIS_SOCKETIO"
 
       if [ ! -d sites/mail.techvision.edu.et ]; then
         echo '🚀 Creating site...';
-        echo "REDIS_CACHE=$REDIS_CACHE"
-        echo "REDIS_QUEUE=$REDIS_QUEUE"
-        echo "REDIS_SOCKETIO=$REDIS_SOCKETIO"
+        
 
         bench new-site mail.techvision.edu.et \
           --db-host mariadb \
