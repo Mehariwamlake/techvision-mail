@@ -109,7 +109,15 @@ services:
     image: frappe/erpnext:v16
     restart: always
     working_dir: /home/frappe/frappe-bench
-    command: bench start
+    command: >
+      gunicorn \
+        --chdir /home/frappe/frappe-bench/sites \
+        --bind 0.0.0.0:8000 \
+        --threads 4 \
+        --workers 2 \
+        --worker-class gthread \
+        --timeout 120 \
+        frappe.app:application
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
       - sites:/home/frappe/frappe-bench/sites
