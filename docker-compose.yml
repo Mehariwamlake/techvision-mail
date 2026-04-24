@@ -66,6 +66,7 @@ services:
       echo "✅ MariaDB ready";
 
       echo "🔧 Setting Redis FIRST (important)";
+      
       bench set-config -g redis_cache "$REDIS_CACHE";
       bench set-config -g redis_queue "$REDIS_QUEUE";
       bench set-config -g redis_socketio "$REDIS_SOCKETIO";
@@ -84,6 +85,7 @@ services:
 
         bench get-app mail https://github.com/Mehariwamlake/mail.git;
         bench --site mail.techvision.edu.et install-app mail;
+        bench use mail.techvision.edu.et
 
       else
         echo "✅ Site already exists";
@@ -115,8 +117,16 @@ services:
   # -------------------------
   backend:
     image: frappe/erpnext:v16
-    command: bench start
+    restart: always
     working_dir: /home/frappe/frappe-bench
+    command: bench start
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    depends_on:
+      - init
+    networks:
+      - frappe-net
 
 
   # -------------------------
