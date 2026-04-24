@@ -8,7 +8,7 @@ export SKIP_ASSETS_BUILD=1
 echo "🚀 Starting TechVision Mail deployment..."
 
 if [ ! -d "frappe-bench" ]; then
-    bench init frappe-bench --frappe-branch version-15 --skip-redis-config-generation
+    bench init frappe-bench --frappe-branch version-16 --skip-redis-config-generation
 fi
 
 cd frappe-bench
