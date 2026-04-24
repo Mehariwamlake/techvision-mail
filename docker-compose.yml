@@ -55,7 +55,13 @@ services:
     container_name: frappe-backend
     restart: always
     working_dir: /home/frappe/frappe-bench
-    command: ["bash", "-c", "pip install pymysql && bench set-config -g db_driver pymysql && bench start"]
+    command: >
+      bash -c "
+        pip install pymysql &&
+        bench set-config -g db_driver pymysql &&
+        bench migrate &&
+        gunicorn -b 0.0.0.0:8000 frappe.app:application --workers 2 --threads 4
+      "    
     environment:
       SHELL: /bin/bash
     env_file:
@@ -70,7 +76,6 @@ services:
       - redis-socketio
     ports:
       - "8000:8000"
-      - "9000:9000"
     networks:
       - frappe-net
 
@@ -133,12 +138,15 @@ services:
     image: frappe/erpnext:v16
     restart: always
     command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
+    environment:
+    REDIS_SOCKETIO: redis://redis-socketio:6379
     ports:
       - "9000:9000"
     depends_on:
-      - backend
+      - redis-socketio
     networks:
       - frappe-net
+
 
 # -------------------------
 # VOLUMES
