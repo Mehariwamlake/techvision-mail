@@ -155,11 +155,11 @@ services:
     image: frappe/erpnext:v16
     restart: always
     working_dir: /home/frappe/frappe-bench
-    command: node apps/frappe/socketio.js
+    command: bench socketio
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
     networks:
-      - frappe-net
+      - frappe-ne
 
   # -------------------------
   # WORKERS
