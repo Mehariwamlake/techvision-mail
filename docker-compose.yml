@@ -103,7 +103,7 @@ services:
     env_file:
       - .env
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
+      - frappe-bench:/home/frappe/frappe-bench
     depends_on:
       - mariadb
       - redis-cache
@@ -121,9 +121,7 @@ services:
     working_dir: /home/frappe/frappe-bench
     command: bench start
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
-      - bench-data:/home/frappe/frappe-bench
+      - frappe-bench:/home/frappe/frappe-bench
 
     depends_on:
       - init
@@ -159,7 +157,7 @@ services:
     working_dir: /home/frappe/frappe-bench
     command: node apps/frappe/socketio.js
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
+      - frappe-bench:/home/frappe/frappe-bench
     networks:
       - frappe-net
 
@@ -172,7 +170,7 @@ services:
     restart: always
     command: bench worker --queue default
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
+      - frappe-bench:/home/frappe/frappe-bench
     depends_on:
       - backend
     networks:
@@ -184,7 +182,7 @@ services:
     restart: always
     command: bench worker --queue short
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
+      - frappe-bench:/home/frappe/frappe-bench
     depends_on:
       - backend
     networks:
@@ -196,7 +194,7 @@ services:
     restart: always
     command: bench worker --queue long
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
+      - frappe-bench:/home/frappe/frappe-bench
     depends_on:
       - backend
     networks:
@@ -210,7 +208,7 @@ services:
     restart: always
     command: bench schedule
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
+      - frappe-bench:/home/frappe/frappe-bench
     depends_on:
       - backend
     networks:
@@ -226,9 +224,7 @@ services:
 # -------------------------
 volumes:
   mariadb-data:
-  sites:
-  logs:
-  bench-data:
+  frappe-bench:
 
     # -------------------------
     # NETWORK
