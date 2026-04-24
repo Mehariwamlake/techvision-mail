@@ -159,7 +159,7 @@ services:
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
     networks:
-      - frappe-ne
+      - frappe-net
 
   # -------------------------
   # WORKERS
