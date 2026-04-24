@@ -20,7 +20,6 @@ services:
     networks:
       - frappe-net
 
-
   # -------------------------
   # REDIS (3 instances)
   # -------------------------
@@ -42,7 +41,6 @@ services:
     networks:
       - frappe-net
 
-
   # -------------------------
   # INIT (RUNS ONCE)
   # -------------------------
@@ -51,16 +49,13 @@ services:
     restart: "no"
     entrypoint: bash
     command: >
-      -c "
-      echo "⏳ Waiting for MariaDB..."
+      -c " echo "⏳ Waiting for MariaDB..."
 
       until mysqladmin ping -h mariadb --silent; do
         sleep 2;
       done
 
-      echo "REDIS_CACHE=$REDIS_CACHE"
-      echo "REDIS_QUEUE=$REDIS_QUEUE"
-      echo "REDIS_SOCKETIO=$REDIS_SOCKETIO"
+      echo "REDIS_CACHE=$REDIS_CACHE" echo "REDIS_QUEUE=$REDIS_QUEUE" echo "REDIS_SOCKETIO=$REDIS_SOCKETIO"
 
       if [ ! -d sites/mail.techvision.edu.et ]; then
         echo '🚀 Creating site...';
@@ -78,12 +73,9 @@ services:
 
       echo '🔧 Configuring Redis...';
 
-      bench set-config -g redis_cache ${REDIS_CACHE};
-      bench set-config -g redis_queue ${REDIS_QUEUE};
-      bench set-config -g redis_socketio ${REDIS_SOCKETIO};
+      bench set-config -g redis_cache ${REDIS_CACHE}; bench set-config -g redis_queue ${REDIS_QUEUE}; bench set-config -g redis_socketio ${REDIS_SOCKETIO};
 
-      bench --site mail.techvision.edu.et migrate;
-      "
+      bench --site mail.techvision.edu.et migrate; "
     env_file:
       - .env
     volumes:
@@ -95,7 +87,6 @@ services:
       - redis-socketio
     networks:
       - frappe-net
-
 
   # -------------------------
   # BACKEND (GUNICORN)
@@ -118,7 +109,6 @@ services:
     networks:
       - frappe-net
 
-
   # -------------------------
   # SOCKET.IO (REALTIME)
   # -------------------------
@@ -133,7 +123,6 @@ services:
       - backend
     networks:
       - frappe-net
-
 
   # -------------------------
   # WORKERS
@@ -171,7 +160,6 @@ services:
     networks:
       - frappe-net
 
-
   # -------------------------
   # SCHEDULER
   # -------------------------
@@ -185,7 +173,6 @@ services:
       - backend
     networks:
       - frappe-net
-
 
   # -------------------------
   # NGINX (REVERSE PROXY)
@@ -203,7 +190,6 @@ services:
     networks:
       - frappe-net
 
-
 # -------------------------
 # VOLUMES
 # -------------------------
@@ -212,10 +198,9 @@ volumes:
   sites:
   logs:
 
-
-# -------------------------
-# NETWORK
-# -------------------------
+    # -------------------------
+    # NETWORK
+    # -------------------------
 networks:
   frappe-net:
     driver: bridge
