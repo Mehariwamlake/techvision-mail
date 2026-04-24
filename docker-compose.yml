@@ -120,6 +120,8 @@ services:
     restart: always
     working_dir: /home/frappe/frappe-bench
     command: bench serve --port 8000
+    ports:
+      - "8000:8000"
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
