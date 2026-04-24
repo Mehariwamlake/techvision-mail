@@ -77,6 +77,9 @@ services:
         bench new-site mail.techvision.edu.et \
           --db-host mariadb \
           --db-port 3306 \
+          --db-name admin \
+          --db-user admin \
+          --db-password admin \
           --mariadb-root-password "$DB_ROOT_PASSWORD" \
           --admin-password "$ADMIN_PASSWORD" \
           --force || exit 1;
