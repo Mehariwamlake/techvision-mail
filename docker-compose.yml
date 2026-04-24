@@ -21,7 +21,7 @@ services:
       - frappe-net
 
   # -------------------------
-  # REDIS (3 instances)
+  # REDIS
   # -------------------------
   redis-cache:
     image: redis:7-alpine
@@ -49,6 +49,8 @@ services:
     restart: "no"
     working_dir: /home/frappe/frappe-bench
     entrypoint: bash
+    env_file:
+      - .env
     environment:
       REDIS_CACHE: redis-cache:6379
       REDIS_QUEUE: redis-queue:6379
@@ -59,51 +61,39 @@ services:
 
       echo "⏳ Waiting for MariaDB...";
       until mysqladmin ping -h mariadb --silent; do
-        echo "Waiting DB...";
         sleep 2;
       done;
 
-      echo "✅ MariaDB ready";
-
-      echo "🔧 Setting Redis FIRST (important)";
-      
+      echo "🔧 Setting Redis";
       bench set-config -g redis_cache "$REDIS_CACHE";
       bench set-config -g redis_queue "$REDIS_QUEUE";
       bench set-config -g redis_socketio "$REDIS_SOCKETIO";
 
-      echo "🚀 Creating site (if not exists)";
       if [ ! -d sites/mail.techvision.edu.et ]; then
+        echo "🚀 Creating site";
 
         bench new-site mail.techvision.edu.et \
           --db-host mariadb \
           --db-port 3306 \
           --mariadb-root-password "$DB_ROOT_PASSWORD" \
           --admin-password "$ADMIN_PASSWORD" \
-          --force || exit 1;
-
-        echo "📦 Installing apps";
+          --force;
 
         bench get-app mail https://github.com/Mehariwamlake/mail.git;
         bench --site mail.techvision.edu.et install-app mail;
         bench use mail.techvision.edu.et
-
-      else
-        echo "✅ Site already exists";
       fi;
 
-      echo "⚙️ Migrating site";
       bench --site mail.techvision.edu.et migrate;
-
-      echo "🧹 Clearing cache";
       bench --site mail.techvision.edu.et clear-cache;
       bench --site mail.techvision.edu.et clear-website-cache;
 
       echo "✅ INIT COMPLETE";
       '
-    env_file:
-      - .env
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
     depends_on:
       - mariadb
       - redis-cache
@@ -113,7 +103,7 @@ services:
       - frappe-net
 
   # -------------------------
-  # BACKEND (GUNICORN)
+  # BACKEND
   # -------------------------
   backend:
     image: frappe/erpnext:v16
@@ -122,52 +112,36 @@ services:
     command: bench start
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
-
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
     depends_on:
       - init
     networks:
       - frappe-net
 
-
   # -------------------------
-  # FRONTEND BUILDER (NODE 18 FIXED)
+  # SOCKET.IO
   # -------------------------
-  mail-frontend-builder:
-    image: node:18-bullseye
-    working_dir: /app
+  socketio:
+    image: frappe/erpnext:v16
+    restart: always
+    working_dir: /home/frappe/frappe-bench
+    command: node apps/frappe/socketio.js
     volumes:
-      - ./apps/mail:/app
-    command: >
-      bash -c "
-        corepack enable &&
-        yarn install &&
-        yarn build
-      "
+      - frappe-bench:/home/frappe/frappe-bench
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
     networks:
       - frappe-net
-    profiles: ["build"]
-
-
-  # -------------------------
-  # SOCKET.IO (REALTIME)
-  # -------------------------
-socketio:
-  image: frappe/erpnext:v16
-  restart: always
-  working_dir: /home/frappe/frappe-bench
-  command: node apps/frappe/socketio.js
-  volumes:
-    - sites:/home/frappe/frappe-bench/sites
-  networks:
-    - frappe-net
 
   # -------------------------
   # WORKERS
   # -------------------------
   worker-default:
     image: frappe/erpnext:v16
-    working_dir: /home/frappe/frappe-bench
     restart: always
+    working_dir: /home/frappe/frappe-bench
     command: bench worker --queue default
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
@@ -178,8 +152,8 @@ socketio:
 
   worker-short:
     image: frappe/erpnext:v16
-    working_dir: /home/frappe/frappe-bench
     restart: always
+    working_dir: /home/frappe/frappe-bench
     command: bench worker --queue short
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
@@ -190,8 +164,8 @@ socketio:
 
   worker-long:
     image: frappe/erpnext:v16
-    working_dir: /home/frappe/frappe-bench
     restart: always
+    working_dir: /home/frappe/frappe-bench
     command: bench worker --queue long
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
@@ -206,6 +180,7 @@ socketio:
   scheduler:
     image: frappe/erpnext:v16
     restart: always
+    working_dir: /home/frappe/frappe-bench
     command: bench schedule
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
@@ -214,23 +189,18 @@ socketio:
     networks:
       - frappe-net
 
-  # -------------------------
-  # NGINX (REVERSE PROXY)
-  # -------------------------
- 
-
 # -------------------------
 # VOLUMES
 # -------------------------
 volumes:
   mariadb-data:
+  frappe-bench:
   sites:
   logs:
-  frappe-bench:
 
-    # -------------------------
-    # NETWORK
-    # -------------------------
+# -------------------------
+# NETWORK
+# -------------------------
 networks:
   frappe-net:
     driver: bridge
