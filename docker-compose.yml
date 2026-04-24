@@ -139,7 +139,7 @@ services:
     restart: always
     command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
     environment:
-    REDIS_SOCKETIO: redis://redis-socketio:6379
+      REDIS_SOCKETIO: redis://redis-socketio:6379
     ports:
       - "9000:9000"
     depends_on:
