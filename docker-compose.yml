@@ -155,7 +155,7 @@ services:
     image: frappe/erpnext:v16
     restart: always
     working_dir: /home/frappe/frappe-bench
-    command: bench socketio
+    command: socketio
     volumes:
       - frappe-bench:/home/frappe/frappe-bench
     networks:
