@@ -56,10 +56,6 @@ services:
     entrypoint: bash
     env_file:
       - .env
-    environment:
-      REDIS_CACHE: redis-cache:6379
-      REDIS_QUEUE: redis-queue:6379
-      REDIS_SOCKETIO: redis-socketio:6379
     command: >
       -c '
       set -e;
@@ -67,10 +63,10 @@ services:
       echo "⏳ Waiting for MariaDB...";
       until mysqladmin ping -h mariadb --silent; do sleep 2; done;
 
-      echo "🔧 Configuring Redis";
-      bench set-config -g redis_cache redis-cache:6379;
-      bench set-config -g redis_queue redis-queue:6379;
-      bench set-config -g redis_socketio redis-socketio:6379;
+      echo "🔧 Setting Redis (FIXED FORMAT)";
+      bench set-config -g redis_cache redis://redis-cache:6379;
+      bench set-config -g redis_queue redis://redis-queue:6379;
+      bench set-config -g redis_socketio redis://redis-socketio:6379;
 
       if ! bench --site mail.techvision.edu.et list-apps >/dev/null 2>&1; then
         echo "🚀 Creating site...";
@@ -83,19 +79,21 @@ services:
         echo "📦 Installing Mail app";
 
         bench get-app mail https://github.com/Mehariwamlake/mail.git || exit 1;
+
         bench --site mail.techvision.edu.et install-app mail || exit 1;
+
       else
         echo "✅ Site already exists, skipping creation";
       fi;
 
-      echo "🔄 Migrating...";
+      echo "🔄 Migrating site...";
       bench --site mail.techvision.edu.et migrate;
 
       echo "🧹 Clearing cache...";
       bench --site mail.techvision.edu.et clear-cache;
       bench --site mail.techvision.edu.et clear-website-cache;
 
-      echo "✅ INIT DONE";
+      echo "✅ INIT COMPLETE";
       '
     volumes:
       - sites:/home/frappe/frappe-bench/sites
