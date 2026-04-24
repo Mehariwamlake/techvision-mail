@@ -3,31 +3,18 @@ version: "3.8"
 name: techvision-mail
 
 services:
-  init:
-    image: frappe/erpnext:v16
-    command: bash /init.sh
-    env_file:
-      - .env
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-    depends_on:
-      - mariadb
-      - redis-cache
-      - redis-queue
-      - redis-socketio
+
   # -------------------------
   # DATABASE
   # -------------------------
   mariadb:
-    image: mariadb:10.8
-    container_name: mariadb
+    image: mariadb:10.11
     restart: always
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --skip-character-set-client-handshake
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     volumes:
       - mariadb-data:/var/lib/mysql
     networks:
@@ -57,25 +44,60 @@ services:
 
 
   # -------------------------
-  # BACKEND (FRAPPE)
+  # INIT (RUNS ONCE)
   # -------------------------
+  init:
+    image: frappe/erpnext:v16
+    restart: "no"
+    entrypoint: bash
+    command: >
+      -c "
+      echo '⏳ Waiting for DB...';
+      sleep 10;
+
+      if [ ! -d sites/mail.techvision.edu.et ]; then
+        echo '🚀 Creating site...';
+
+        bench new-site mail.techvision.edu.et \
+          --mariadb-root-password ${DB_ROOT_PASSWORD} \
+          --admin-password ${ADMIN_PASSWORD} \
+          --no-mariadb-socket;
+
+        bench --site mail.techvision.edu.et install-app mail;
+      fi;
+
+      echo '🔧 Configuring Redis...';
+
+      bench set-config -g redis_cache ${REDIS_CACHE};
+      bench set-config -g redis_queue ${REDIS_QUEUE};
+      bench set-config -g redis_socketio ${REDIS_SOCKETIO};
+
+      bench --site mail.techvision.edu.et migrate;
+      "
+    env_file:
+      - .env
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - mariadb
+      - redis-cache
+      - redis-queue
+      - redis-socketio
+    networks:
+      - frappe-net
 
 
+  # -------------------------
+  # BACKEND (GUNICORN)
+  # -------------------------
   backend:
     image: frappe/erpnext:v16
-    container_name: frappe-backend
     restart: always
-    working_dir: /home/frappe/frappe-bench
     command: >
       bash -c "
-        pip install pymysql &&
-        bench set-config -g db_driver pymysql &&
         bench use mail.techvision.edu.et &&
-        bench migrate &&
         gunicorn -b 0.0.0.0:8000 frappe.app:application --workers 2 --threads 4
-      "    
-    environment:
-      SHELL: /bin/bash
+      "
     env_file:
       - .env
     volumes:
@@ -83,31 +105,61 @@ services:
       - logs:/home/frappe/frappe-bench/logs
     depends_on:
       - init
-    ports:
-      - "8000:8000"
     networks:
       - frappe-net
 
+
   # -------------------------
-  # FRONTEND BUILDER (OPTIONAL BUT CLEAN)
+  # SOCKET.IO (REALTIME)
   # -------------------------
-  mail-frontend-builder:
-    image: node:20-bullseye
-    container_name: mail-frontend-builder
-    working_dir: /app
-    volumes:
-      - ./apps/mail:/app
-    command: >
-      bash -c "
-        corepack enable &&
-        cd frontend &&
-        yarn install &&
-        bun install &&
-        bun run build
-      "
+  socketio:
+    image: frappe/erpnext:v16
+    restart: always
+    command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
+    environment:
+      REDIS_SOCKETIO: ${REDIS_SOCKETIO}
+    depends_on:
+      - redis-socketio
+      - backend
     networks:
       - frappe-net
-    profiles: ["build"]
+
+
+  # -------------------------
+  # WORKERS
+  # -------------------------
+  worker-default:
+    image: frappe/erpnext:v16
+    restart: always
+    command: bench worker --queue default
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+    networks:
+      - frappe-net
+
+  worker-short:
+    image: frappe/erpnext:v16
+    restart: always
+    command: bench worker --queue short
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+    networks:
+      - frappe-net
+
+  worker-long:
+    image: frappe/erpnext:v16
+    restart: always
+    command: bench worker --queue long
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      - backend
+    networks:
+      - frappe-net
 
 
   # -------------------------
@@ -126,33 +178,18 @@ services:
 
 
   # -------------------------
-  # WORKER (DEFAULT QUEUE)
+  # NGINX (REVERSE PROXY)
   # -------------------------
-  worker:
-    image: frappe/erpnext:v16
+  nginx:
+    image: nginx:alpine
     restart: always
-    command: bench worker --queue default
+    ports:
+      - "80:80"
     volumes:
-      - sites:/home/frappe/frappe-bench/sites
+      - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - backend
-    networks:
-      - frappe-net
-
-
-  # -------------------------
-  # SOCKETIO
-  # -------------------------
-  socketio:
-    image: frappe/erpnext:v16
-    restart: always
-    command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
-    environment:
-      REDIS_SOCKETIO: redis://redis-socketio:6379
-    ports:
-      - "9000:9000"
-    depends_on:
-      - redis-socketio
+      - socketio
     networks:
       - frappe-net
 
@@ -172,4 +209,3 @@ volumes:
 networks:
   frappe-net:
     driver: bridge
-
