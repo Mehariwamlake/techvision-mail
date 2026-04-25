@@ -36,7 +36,6 @@ services:
     image: ${FRAPPE_IMAGE}
     container_name: frappe-site-setup
     restart: "no"
-
     working_dir: /home/frappe/frappe-bench
 
     depends_on:
@@ -47,11 +46,8 @@ services:
     command: >
       bash -lc "
       set -e;
-
-      echo 'Waiting for DB...';
+      echo 'Waiting DB...';
       sleep 20;
-
-      echo 'Creating site...';
 
       bench new-site ${SITE_NAME}
         --admin-password admin
