@@ -26,6 +26,8 @@ services:
     working_dir: /home/frappe/frap
     command: >
       "set -e;
+      mkdir -p sites
+
 
       ls -1 apps > sites/apps.txt;
 
