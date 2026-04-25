@@ -1,5 +1,4 @@
 services:
-
   backend:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
@@ -28,21 +27,19 @@ services:
     entrypoint: ["bash", "-lc"]
 
     command: |
-      set -euxo pipefail
+      set -e
 
-      SITE_DIR=/home/frappe/frappe-bench/sites
+      echo "Creating sites folder..."
+      mkdir -p /home/frappe/frappe-bench/sites
 
-      echo "== Ensuring sites folder =="
-      mkdir -p $SITE_DIR
-
-      echo "== Creating apps.txt =="
-      if [ -d apps ] && [ "$(ls -A apps)" ]; then
-        ls -1 apps > $SITE_DIR/apps.txt
+      echo "Generating apps list..."
+      if [ -d apps ]; then
+        ls -1 apps > /home/frappe/frappe-bench/sites/apps.txt
       else
-        echo "frappe" > $SITE_DIR/apps.txt
+        echo "frappe" > /home/frappe/frappe-bench/sites/apps.txt
       fi
 
-      echo "== Writing bench config =="
+      echo "Setting bench config..."
       bench set-config -g db_host "$DB_HOST"
       bench set-config -g db_port "$DB_PORT"
       bench set-config -g redis_cache "redis://$REDIS_CACHE"
@@ -50,8 +47,10 @@ services:
       bench set-config -g redis_socketio "redis://$REDIS_QUEUE"
       bench set-config -g socketio_port "$SOCKETIO_PORT"
 
-      echo "== FINAL CONFIG =="
-      cat $SITE_DIR/common_site_config.json || true
+      echo "Done configurator"
+      mkdir -p sites
+      touch sites/common_site_config.json
+      bench --site all clear-cache
 
   create-site:
     user: root
@@ -62,17 +61,17 @@ services:
 
     command:
       - |
-        SITE_DIR=/home/frappe/frappe-bench/sites
+        set -e
 
         echo "Waiting for config file..."
 
-        until [ -f "$SITE_DIR/common_site_config.json" ]; do
+        while [ ! -f sites/common_site_config.json ]; do
           sleep 3
         done
 
         echo "Config found, waiting for keys..."
 
-        until jq -e '.db_host and .redis_cache and .redis_queue' "$SITE_DIR/common_site_config.json" >/dev/null 2>&1; do
+        until jq -e '.db_host' sites/common_site_config.json >/dev/null 2>&1; do
           sleep 3
         done
 
