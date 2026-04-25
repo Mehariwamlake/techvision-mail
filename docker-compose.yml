@@ -6,22 +6,27 @@ services:
     image: ${FRAPPE_IMAGE}
     container_name: frappe-backend
     restart: unless-stopped
+
     depends_on:
       - db
       - redis-cache
       - redis-queue
       - redis-socketio
+
     ports:
       - "8000:8000"
+
     environment:
       SITE_NAME: ${SITE_NAME}
-      DB_HOST: ${DB_HOST}
+      DB_HOST: db
       DB_PORT: ${DB_PORT}
       REDIS_CACHE: ${REDIS_CACHE}
       REDIS_QUEUE: ${REDIS_QUEUE}
       REDIS_SOCKETIO: ${REDIS_SOCKETIO}
+
     working_dir: /home/frappe/frappe-bench
     command: bench start
+
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
@@ -31,6 +36,7 @@ services:
     image: ${FRAPPE_IMAGE}
     container_name: frappe-site-setup
     restart: "no"
+
     working_dir: /home/frappe/frappe-bench
 
     depends_on:
@@ -41,14 +47,16 @@ services:
     command: >
       bash -lc "
       set -e;
-      echo 'Waiting DB...';
+
+      echo 'Waiting for DB...';
       sleep 20;
 
-      bench new-site mail.techvision.edu.et \
-        --force \
-        --admin-password admin \
-        --mariadb-root-password admin \
-        --db-host db
+      echo 'Creating site...';
+
+      bench new-site ${SITE_NAME}
+        --admin-password admin
+        --mariadb-root-password ${DB_ROOT_PASSWORD}
+        --db-host ${DB_HOST} || true;
 
       bench --site ${SITE_NAME} install-app erpnext || true;
       bench --site ${SITE_NAME} install-app mail || true;
@@ -59,28 +67,59 @@ services:
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
+    db:
+      image: mariadb:10.6
+      container_name: frappe-db
+      restart: unless-stopped
 
-  db:
-    image: mariadb:10.6
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --skip-log-bin
-    volumes:
+      command:
+        - --character-set-server=utf8mb4
+        - --collation-server=utf8mb4_unicode_ci
+        - --skip-log-bin
+
+      environment:
+        MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+        MYSQL_DATABASE: ${DB_NAME}
+
+      volumes:
       - db-data:/var/lib/mysql
 
 
   redis-cache:
     image: redis:7-alpine
+    restart: unless-stopped
 
   redis-queue:
     image: redis:7-alpine
+    restart: unless-stopped
 
   redis-socketio:
     image: redis:7-alpine
+    restart: unless-stopped
+
+
+  worker-default:
+    image: ${FRAPPE_IMAGE}
+    command: bench worker --queue default
+    working_dir: /home/frappe/frappe-bench
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis-queue
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+
+  scheduler:
+    image: ${FRAPPE_IMAGE}
+    command: bench schedule
+    working_dir: /home/frappe/frappe-bench
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis-queue
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
 
 
 volumes:
