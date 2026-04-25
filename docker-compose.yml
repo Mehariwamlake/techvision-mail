@@ -5,7 +5,7 @@ services:
     working_dir: /home/frappe/frappe-bench
     networks:
       - frappe_network
-    command: ["bench", "start"]
+    command: ["bench", "serve"]
     depends_on:
       - db
       - redis-cache
