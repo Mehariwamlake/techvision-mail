@@ -38,4 +38,4 @@ bench --site mail.techvision.edu.et set-config developer_mode 1
 bench --site mail.techvision.edu.et clear-cache
 bench use mail.techvision.edu.et
 
-bench start
+bench serve --port 8000
