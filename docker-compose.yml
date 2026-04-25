@@ -22,23 +22,16 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   configurator:
-    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
-    working_dir: /home/frappe/frappe-bench
-    restart: "no"
-    networks:
-      - frappe_network
     entrypoint: ["bash", "-lc"]
     command: >
-      set -e;
-
+      "set -e;
       ls -1 apps > sites/apps.txt;
-
-      bench set-config -g db_host "$DB_HOST";
-      bench set-config -gp db_port "$DB_PORT";
-      bench set-config -g redis_cache "redis://$REDIS_CACHE";
-      bench set-config -g redis_queue "redis://$REDIS_QUEUE";
-      bench set-config -g redis_socketio "redis://$REDIS_QUEUE";
-      bench set-config -gp socketio_port "$SOCKETIO_PORT";
+      bench set-config -g db_host \"$DB_HOST\";
+      bench set-config -gp db_port \"$DB_PORT\";
+      bench set-config -g redis_cache \"redis://$REDIS_CACHE\";
+      bench set-config -g redis_queue \"redis://$REDIS_QUEUE\";
+      bench set-config -g redis_socketio \"redis://$REDIS_QUEUE\";
+      bench set-config -gp socketio_port \"$SOCKETIO_PORT\";"
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -50,47 +43,33 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   create-site:
-    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
-    working_dir: /home/frappe/frappe-bench
-    restart: "no"
-    networks:
-      - frappe_network
-    depends_on:
-      db:
-        condition: service_healthy
-      redis-cache:
-        condition: service_started
-      redis-queue:
-        condition: service_started
-      configurator:
-        condition: service_completed_successfully
     entrypoint: ["bash", "-lc"]
     command: >
-      set -e;
+      "set -e;
 
       start=$(date +%s);
 
-      until [[ -n "$(jq -r '.db_host // empty' sites/common_site_config.json)" ]] &&
-            [[ -n "$(jq -r '.redis_cache // empty' sites/common_site_config.json)" ]] &&
-            [[ -n "$(jq -r '.redis_queue // empty' sites/common_site_config.json)" ]];
+      until [[ -n \"$(jq -r '.db_host // empty' sites/common_site_config.json)\" ]] &&
+            [[ -n \"$(jq -r '.redis_cache // empty' sites/common_site_config.json)\" ]] &&
+            [[ -n \"$(jq -r '.redis_queue // empty' sites/common_site_config.json)\" ]];
       do
-        echo "Waiting for config...";
+        echo 'Waiting for config...';
         sleep 5;
 
         if (( $(date +%s) - start > 120 )); then
-          echo "Config not found";
+          echo 'Config not found';
           exit 1;
         fi
       done;
 
       bench new-site \
         --mariadb-user-host-login-scope='%' \
-        --admin-password="$ADMIN_PASSWORD" \
+        --admin-password=\"$ADMIN_PASSWORD\" \
         --db-root-username=root \
-        --db-root-password="$MYSQL_ROOT_PASSWORD" \
+        --db-root-password=\"$MYSQL_ROOT_PASSWORD\" \
         --install-app erpnext \
         --install-app mail \
-        --set-default "$SITE_NAME";
+        --set-default \"$SITE_NAME\";"
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
