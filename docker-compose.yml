@@ -10,18 +10,23 @@ services:
       - db
       - redis-cache
       - redis-queue
+      - redis-socketio
 
     ports:
       - "8000:8000"
 
     environment:
-      - DB_HOST=db
-      - DB_PORT=3306
-      - REDIS_CACHE=redis-cache:6379
-      - REDIS_QUEUE=redis-queue:6379
-      - REDIS_SOCKETIO=redis-cache:6379
-      - SITE_NAME=site1.local
-      - INSTALL_APPS=erpnext,mail
+      DB_HOST: db
+      DB_PORT: 3306
+      REDIS_CACHE: redis-cache:6379
+      REDIS_QUEUE: redis-queue:6379
+      REDIS_SOCKETIO: redis-socketio:6379
+      SITE_NAME: site1.local
+      INSTALL_APPS: erpnext,mail
+
+    working_dir: /home/frappe/frappe-bench
+
+    command: bash -lc "bench start"
 
     volumes:
       - sites:/home/frappe/frappe-bench/sites
@@ -38,8 +43,9 @@ services:
       - --skip-log-bin
 
     environment:
-      - MYSQL_ROOT_PASSWORD=frappe
-      - MYSQL_DATABASE=frappe
+      MYSQL_ROOT_PASSWORD: frappe
+      MYSQL_DATABASE: frappe
+
     volumes:
       - db-data:/var/lib/mysql
 
@@ -63,12 +69,13 @@ services:
     container_name: frappe-worker-default
     restart: unless-stopped
 
-    command: bench worker --queue default
+    working_dir: /home/frappe/frappe-bench
+
+    command: bash -lc "bench worker --queue default"
 
     depends_on:
-      - backend
-      - redis-queue
       - db
+      - redis-queue
 
     volumes:
       - sites:/home/frappe/frappe-bench/sites
@@ -78,12 +85,13 @@ services:
     container_name: frappe-worker-short
     restart: unless-stopped
 
-    command: bench worker --queue short
+    working_dir: /home/frappe/frappe-bench
+
+    command: bash -lc "bench worker --queue short"
 
     depends_on:
-      - backend
-      - redis-queue
       - db
+      - redis-queue
 
     volumes:
       - sites:/home/frappe/frappe-bench/sites
@@ -93,10 +101,11 @@ services:
     container_name: frappe-scheduler
     restart: unless-stopped
 
-    command: bench schedule
+    working_dir: /home/frappe/frappe-bench
+
+    command: bash -lc "bench schedule"
 
     depends_on:
-      - backend
       - db
       - redis-queue
 
