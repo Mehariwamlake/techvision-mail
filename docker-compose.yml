@@ -50,6 +50,12 @@ services:
       echo "Done configurator"
       mkdir -p sites
       touch sites/common_site_config.json
+      ench set-config -g db_host $$DB_HOST;
+      bench set-config -gp db_port $$DB_PORT;
+      bench set-config -g redis_cache "redis://$$REDIS_CACHE";
+      bench set-config -g redis_queue "redis://$$REDIS_QUEUE";
+      bench set-config -g redis_socketio "redis://$$REDIS_QUEUE";
+      bench set-config -gp socketio_port $$SOCKETIO_PORT;
       bench --site all clear-cache
 
   create-site:
