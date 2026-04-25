@@ -23,6 +23,7 @@ services:
   configurator:
     user: root
     entrypoint: ["bash", "-c"]
+    working_dir: /home/frappe/frappe-bench
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     command: >
       set -e;
