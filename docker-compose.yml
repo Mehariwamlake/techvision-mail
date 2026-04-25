@@ -1,15 +1,17 @@
+version: "3.8"
+
 services:
   backend:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
     working_dir: /home/frappe/frappe-bench
-    networks:
-      - frappe_network
     command: ["bench", "start"]
     depends_on:
       - db
       - redis-cache
       - redis-queue
+    networks:
+      - frappe_network
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -20,6 +22,7 @@ services:
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
+
   configurator:
     user: frappe
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
@@ -44,64 +47,82 @@ services:
       }
       EOF
 
-        echo "Generating apps list..."
-        ls -1 apps > sites/apps.txt
+      echo "Generating apps list..."
+      ls -1 apps > sites/apps.txt
 
-        echo "Configurator done"
+      echo "Configurator DONE"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe_network
 
   create-site:
     user: root
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     working_dir: /home/frappe/frappe-bench
+    entrypoint: ["/bin/bash", "-c"]
+    depends_on:
+      - configurator
+      - db
+    command: |
+      set -e
 
-    entrypoint: ["bash", "-lc"]
+      echo "Waiting for config file..."
+      while [ ! -f sites/common_site_config.json ]; do
+        sleep 3
+      done
 
-    command:
-      - |
-        set -e
+      echo "Checking config content..."
+      cat sites/common_site_config.json
 
-        echo "Waiting for config file..."
+      until jq -e '.db_host' sites/common_site_config.json >/dev/null 2>&1; do
+        echo "Waiting for db_host..."
+        sleep 3
+      done
 
-        while [ ! -f sites/common_site_config.json ]; do
-          sleep 3
-        done
+      echo "Waiting for DB..."
+      until mysqladmin ping -h "$DB_HOST" --password="$MYSQL_ROOT_PASSWORD" --silent; do
+        sleep 3
+      done
 
-        echo "Config found, waiting for keys..."
+      echo "Creating site..."
 
-        until jq -e '.db_host' sites/common_site_config.json >/dev/null 2>&1; do
-          sleep 3
-        done
+      bench new-site "$SITE_NAME" \
+        --mariadb-user-host-login-scope='%' \
+        --admin-password="$ADMIN_PASSWORD" \
+        --db-root-username=root \
+        --db-root-password="$MYSQL_ROOT_PASSWORD" \
+        --install-app erpnext \
+        --install-app mail \
+        --set-default
 
-        echo "Creating site..."
-
-        bench new-site \
-          --mariadb-user-host-login-scope='%' \
-          --admin-password="$ADMIN_PASSWORD" \
-          --db-root-username=root \
-          --db-root-password="$MYSQL_ROOT_PASSWORD" \
-          --install-app erpnext \
-          --install-app mail \
-          --set-default "$SITE_NAME"
+      echo "Site creation DONE"
+    environment:
+      DB_HOST: ${DB_HOST}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SITE_NAME: ${SITE_NAME}
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe_network
+
   db:
     image: mariadb:10.8
     restart: always
     networks:
       - frappe_network
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     healthcheck:
       test: mysqladmin ping -h localhost --password=${MYSQL_ROOT_PASSWORD}
       interval: 5s
       retries: 20
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --skip-character-set-client-handshake
-      - --skip-innodb-read-only-compressed
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
     volumes:
       - db-data:/var/lib/mysql
 
@@ -109,40 +130,31 @@ services:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
     depends_on:
-      - websocket
       - backend
+      - websocket
     working_dir: /home/frappe/frappe-bench
+    command: ["nginx-entrypoint.sh"]
     networks:
       - frappe_network
-    command: ["nginx-entrypoint.sh"]
     environment:
       BACKEND: ${BACKEND}
       FRAPPE_SITE_NAME_HEADER: ${FRAPPE_SITE_NAME_HEADER}
       SOCKETIO: websocket:${SOCKETIO_PORT}
-      UPSTREAM_REAL_IP_ADDRESS: ${UPSTREAM_REAL_IP_ADDRESS}
-      UPSTREAM_REAL_IP_HEADER: ${UPSTREAM_REAL_IP_HEADER}
-      UPSTREAM_REAL_IP_RECURSIVE: ${UPSTREAM_REAL_IP_RECURSIVE}
-      PROXY_READ_TIMEOUT: ${PROXY_READ_TIMEOUT}
-      CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE}
+    ports:
+      - "8080:8080"
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
-    ports:
-      - "8080:8080"
 
   queue-long:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
-    working_dir: /home/frappe/frappe-bench
-    networks:
-      - frappe_network
     command: ["bench", "worker", "--queue", "long,default,short"]
     depends_on:
       - redis-cache
       - redis-queue
-    environment:
-      FRAPPE_REDIS_CACHE: redis://${REDIS_CACHE}
-      FRAPPE_REDIS_QUEUE: redis://${REDIS_QUEUE}
+    networks:
+      - frappe_network
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
@@ -150,19 +162,16 @@ services:
   queue-short:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
-    working_dir: /home/frappe/frappe-bench
-    networks:
-      - frappe_network
     command: ["bench", "worker", "--queue", "short,default"]
     depends_on:
       - redis-cache
       - redis-queue
-    environment:
-      FRAPPE_REDIS_CACHE: redis://${REDIS_CACHE}
-      FRAPPE_REDIS_QUEUE: redis://${REDIS_QUEUE}
+    networks:
+      - frappe_network
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
+
   redis-queue:
     image: redis:6.2-alpine
     restart: always
@@ -180,13 +189,12 @@ services:
   scheduler:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
-    working_dir: /home/frappe/frappe-bench
-    networks:
-      - frappe_network
     command: ["bench", "schedule"]
     depends_on:
       - redis-cache
       - redis-queue
+    networks:
+      - frappe_network
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
@@ -194,12 +202,12 @@ services:
   websocket:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
+    command: ["node", "/home/frappe/frappe-bench/apps/frappe/socketio.js"]
+    depends_on:
+      - redis-cache
+      - redis-queue
     networks:
       - frappe_network
-    command: ["node", "/home/frappe/frappe-bench/apps/frappe/socketio.js"]
-    environment:
-      FRAPPE_REDIS_CACHE: redis://${REDIS_CACHE}
-      FRAPPE_REDIS_QUEUE: redis://${REDIS_QUEUE}
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
