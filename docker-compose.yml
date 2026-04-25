@@ -44,10 +44,11 @@ services:
       echo 'Waiting DB...';
       sleep 20;
 
-      bench new-site ${SITE_NAME}
-        --admin-password admin
-        --mariadb-root-password ${DB_ROOT_PASSWORD}
-        --db-host ${DB_HOST} || true;
+      bench new-site mail.techvision.edu.et \
+        --force \
+        --admin-password admin \
+        --mariadb-root-password admin \
+        --db-host db
 
       bench --site ${SITE_NAME} install-app erpnext || true;
       bench --site ${SITE_NAME} install-app mail || true;
