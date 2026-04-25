@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   backend:
-    image: ghcr.io/mehariwamlake/mail:79a17d7c3a12956d4382a496513034d2bba5e42c
+    image: ghcr.io/mehariwamlake/mail:d34b2768f3ab2adb84edf8487e201debdb9ddd93
     container_name: frappe-backend
     restart: unless-stopped
 
@@ -65,7 +65,7 @@ services:
     restart: unless-stopped
 
   worker-default:
-    image: ghcr.io/mehariwamlake/mail:79a17d7c3a12956d4382a496513034d2bba5e42c
+    image: ghcr.io/mehariwamlake/mail:d34b2768f3ab2adb84edf8487e201debdb9ddd93
     container_name: frappe-worker-default
     restart: unless-stopped
 
@@ -81,7 +81,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
 
   worker-short:
-    image: ghcr.io/mehariwamlake/mail:79a17d7c3a12956d4382a496513034d2bba5e42c
+    image: ghcr.io/mehariwamlake/mail:d34b2768f3ab2adb84edf8487e201debdb9ddd93
     container_name: frappe-worker-short
     restart: unless-stopped
 
@@ -97,7 +97,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
 
   scheduler:
-    image: ghcr.io/mehariwamlake/mail:79a17d7c3a12956d4382a496513034d2bba5e42c
+    image: ghcr.io/mehariwamlake/mail:d34b2768f3ab2adb84edf8487e201debdb9ddd93
     container_name: frappe-scheduler
     restart: unless-stopped
 
