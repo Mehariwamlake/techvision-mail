@@ -53,33 +53,38 @@ services:
       bench --site all clear-cache
 
   create-site:
-    user: frappe
-    entrypoint: ["bash", "-lc"]
+    user: root
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     working_dir: /home/frappe/frappe-bench
-    command: >
-      set -e;
 
-      start=$(date +%s);
+    entrypoint: ["bash", "-lc"]
 
-      until [[ -f sites/common_site_config.json ]]; do
-        echo "Waiting for config file...";
-        sleep 5;
-      done;
+    command:
+      - |
+        set -e
 
-      until jq -e '.db_host' sites/common_site_config.json >/dev/null 2>&1; do
-        echo "Waiting for config values...";
-        sleep 5;
-      done;
+        echo "Waiting for config file..."
 
-      bench new-site \
-        --mariadb-user-host-login-scope='%' \
-        --admin-password="$ADMIN_PASSWORD" \
-        --db-root-username=root \
-        --db-root-password="$MYSQL_ROOT_PASSWORD" \
-        --install-app erpnext \
-        --install-app mail \
-        --set-default "$SITE_NAME";
+        while [ ! -f sites/common_site_config.json ]; do
+          sleep 3
+        done
+
+        echo "Config found, waiting for keys..."
+
+        until jq -e '.db_host' sites/common_site_config.json >/dev/null 2>&1; do
+          sleep 3
+        done
+
+        echo "Creating site..."
+
+        bench new-site \
+          --mariadb-user-host-login-scope='%' \
+          --admin-password="$ADMIN_PASSWORD" \
+          --db-root-username=root \
+          --db-root-password="$MYSQL_ROOT_PASSWORD" \
+          --install-app erpnext \
+          --install-app mail \
+          --set-default "$SITE_NAME"
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
