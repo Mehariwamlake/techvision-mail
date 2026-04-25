@@ -23,16 +23,16 @@ services:
   command: |
     set -euxo pipefail
 
-    SITE_DIR=/home/frappe/frappe-bench/sites
+    working_dir=/home/frappe/frappe-bench/sites
 
     echo "== Ensuring sites folder =="
-    mkdir -p $SITE_DIR
+    mkdir -p $working_dir
 
     echo "== Creating apps.txt =="
     if [ -d apps ] && [ "$(ls -A apps)" ]; then
-      ls -1 apps > $SITE_DIR/apps.txt
+      ls -1 apps > $working_dir/apps.txt
     else
-      echo "frappe" > $SITE_DIR/apps.txt
+      echo "frappe" > $working_dir/apps.txt
     fi
 
     echo "== Writing bench config =="
@@ -44,7 +44,7 @@ services:
     bench set-config -g socketio_port "$SOCKETIO_PORT"
 
     echo "== FINAL CONFIG =="
-    cat $SITE_DIR/common_site_config.json || true
+    cat $working_dir/common_site_config.json || true
         echo "DONE"
 
   create-site:
