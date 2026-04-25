@@ -46,6 +46,8 @@ services:
 
   create-site:
     entrypoint: ["bash", "-lc"]
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
+    working_dir: /home/frappe/frappe-bench
     command: >
       "set -e;
 
