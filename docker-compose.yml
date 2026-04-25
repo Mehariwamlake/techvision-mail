@@ -170,6 +170,8 @@ services:
   redis-cache:
     image: redis:6.2-alpine
     restart: always
+    networks:
+      - frappe_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s
@@ -178,6 +180,8 @@ services:
   redis-queue:
     image: redis:6.2-alpine
     restart: always
+    networks:
+      - frappe_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s
