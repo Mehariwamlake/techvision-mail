@@ -30,7 +30,11 @@ services:
       mkdir -p sites
 
 
-      ls -1 apps > sites/apps.txt;
+      if [ -d apps ]; then
+        ls -1 apps > sites/apps.txt
+      else
+        echo "frappe" > sites/apps.txt
+      fi
 
       bench set-config -g db_host \"$DB_HOST\";
       bench set-config -gp db_port \"$DB_PORT\";
