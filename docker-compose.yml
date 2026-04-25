@@ -167,20 +167,21 @@ services:
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
-  redis-queue:
-    image: redis:6.2-alpine
-    restart: always
-    networks:
-      - frappe_network
-    volumes:
-      - redis-queue-data:/data
-
   redis-cache:
     image: redis:6.2-alpine
     restart: always
-    networks:
-      - frappe_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 10
 
+  redis-queue:
+    image: redis:6.2-alpine
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 10
   scheduler:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
