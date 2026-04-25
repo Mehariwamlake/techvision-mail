@@ -47,9 +47,12 @@ services:
       - logs:/home/frappe/frappe-bench/logs
     entrypoint: ["bash", "-c"]
     command: >
-      wait-for-it db:3306 -t 120;
-      wait-for-it redis-cache:6379 -t 120;
-      wait-for-it redis-queue:6379 -t 120;
+      bash -lc "
+      set -e;
+
+      wait-for-it db:3306 -t 120 -- echo 'db ready';
+      wait-for-it redis-cache:6379 -t 120 -- echo 'redis-cache ready';
+      wait-for-it redis-queue:6379 -t 120 -- echo 'redis-queue ready';
       export start=`date +%s`;
       until [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".db_host // empty"` ]] &&
         [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".redis_cache // empty"` ]] &&
