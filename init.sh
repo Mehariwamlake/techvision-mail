@@ -20,9 +20,7 @@ bench set-redis-cache-host redis://redis:6379
 bench set-redis-queue-host redis://redis:6379
 bench set-redis-socketio-host redis://redis:6379
 
-bench set-config -g redis_queue redis://redis-queue:6379
-bench set-config -g redis_cache redis://redis-cache:6379
-bench set-config -g redis_socketio redis://redis-queue:6379
+
 # Remove redis, watch from Procfile
 sed -i '/redis/d' ./Procfile
 sed -i '/watch/d' ./Procfile
