@@ -30,27 +30,25 @@ services:
       set -e
 
       echo "Creating sites folder..."
-      mkdir -p /home/frappe/frappe-bench/sites
-      touch /home/frappe/frappe-bench/sites/common_site_config.json
+      mkdir -p sites
 
-      echo "Generating apps list..."
-      if [ -d apps ]; then
-        ls -1 apps > /home/frappe/frappe-bench/sites/apps.txt
-      else
-        echo "frappe" > /home/frappe/frappe-bench/sites/apps.txt
-      fi
+      echo "Writing common_site_config.json..."
 
-      echo "Setting bench config..."
-      bench set-config -g db_host "$DB_HOST"
-      bench set-config -g db_port "$DB_PORT"
-      bench set-config -g redis_cache "redis://$REDIS_CACHE"
-      bench set-config -g redis_queue "redis://$REDIS_QUEUE"
-      bench set-config -g redis_socketio "redis://$REDIS_QUEUE"
-      bench set-config -g socketio_port "$SOCKETIO_PORT"
+      cat > sites/common_site_config.json <<EOF
+      {
+        "db_host": "${DB_HOST}",
+        "db_port": ${DB_PORT},
+        "redis_cache": "redis://${REDIS_CACHE}",
+        "redis_queue": "redis://${REDIS_QUEUE}",
+        "redis_socketio": "redis://${REDIS_QUEUE}",
+        "socketio_port": "${SOCKETIO_PORT}"
+      }
+      EOF
 
-      echo "Done configurator"
-      
-      bench --site all clear-cache
+        echo "Generating apps list..."
+        ls -1 apps > sites/apps.txt
+
+        echo "Configurator done"
 
   create-site:
     user: root
