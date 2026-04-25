@@ -21,7 +21,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
   configurator:
-    user: frappe
+    user: root
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     working_dir: /home/frappe/frappe-bench
     entrypoint: ["bash", "-lc"]
@@ -29,28 +29,23 @@ services:
     command: |
       set -e
 
-      echo "Creating sites folder..."
-      mkdir -p /home/frappe/frappe-bench/sites
-
-      echo "Generating apps list..."
-      if [ -d apps ]; then
-        ls -1 apps > /home/frappe/frappe-bench/sites/apps.txt
-      else
-        echo "frappe" > /home/frappe/frappe-bench/sites/apps.txt
-      fi
-
-      echo "Setting bench config..."
-      bench set-config -g db_host "$DB_HOST"
-      bench set-config -g db_port "$DB_PORT"
-      bench set-config -g redis_cache "redis://$REDIS_CACHE"
-      bench set-config -g redis_queue "redis://$REDIS_QUEUE"
-      bench set-config -g redis_socketio "redis://$REDIS_QUEUE"
-      bench set-config -g socketio_port "$SOCKETIO_PORT"
-
-      echo "Done configurator"
       mkdir -p sites
-      touch sites/common_site_config.json
-      bench --site all clear-cache
+
+      echo "Writing common_site_config.json directly..."
+
+      cat > sites/common_site_config.json <<EOF
+      {
+        "db_host": "$DB_HOST",
+        "db_port": "$DB_PORT",
+        "redis_cache": "redis://$REDIS_CACHE",
+        "redis_queue": "redis://$REDIS_QUEUE",
+        "redis_socketio": "redis://$REDIS_QUEUE",
+        "socketio_port": "$SOCKETIO_PORT"
+      }
+      EOF
+
+      echo "Verifying config:"
+      cat sites/common_site_config.json
 
   create-site:
     user: root
