@@ -3,17 +3,21 @@ services:
     image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
     restart: always
     working_dir: /home/frappe/frappe-bench
-
     networks:
       - frappe_network
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
+    command: ["bench", "start"]
+    depends_on:
+      - db
+      - redis-cache
+      - redis-queue
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
 
   configurator:
     image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
