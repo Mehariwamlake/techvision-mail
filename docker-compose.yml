@@ -218,6 +218,7 @@ volumes:
 networks:
   frappe_network:
     driver: bridge
+    name: frappe_network
 
 
     
