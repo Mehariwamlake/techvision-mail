@@ -2,6 +2,8 @@ services:
   backend:
     image: ghcr.io/mehariwamlake/mail:3face6225ddc72cb7d3a09382de17d0215f41c60
     restart: always
+    working_dir: /home/frappe/frappe-bench
+
     networks:
       - frappe_network
     volumes:
@@ -15,6 +17,8 @@ services:
 
   configurator:
     image: ghcr.io/mehariwamlake/mail:3face6225ddc72cb7d3a09382de17d0215f41c60
+    working_dir: /home/frappe/frappe-bench
+
     restart: "no"
     networks:
       - frappe_network
@@ -39,6 +43,7 @@ services:
 
   create-site:
     image: ghcr.io/mehariwamlake/mail:3face6225ddc72cb7d3a09382de17d0215f41c60
+    working_dir: /home/frappe/frappe-bench
     restart: "no"
     networks:
       - frappe_network
