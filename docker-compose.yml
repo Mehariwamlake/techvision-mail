@@ -21,6 +21,7 @@ services:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
   configurator:
+    user: root
     entrypoint: ["bash", "-lc"]
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     working_dir: /home/frappe/frap
@@ -50,6 +51,7 @@ services:
 
 
   create-site:
+    user: root
     entrypoint: ["bash", "-lc"]
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     working_dir: /home/frappe/frappe-bench
