@@ -1,22 +1,109 @@
 version: "3.8"
 
 services:
-  frappe:
+  backend:
     image: ghcr.io/mehariwamlake/mail:7915f7f3e76ec431af1a35167e932565815e0535
-    container_name: frappe-mail-stack
+    container_name: frappe-backend
     restart: unless-stopped
+
+    depends_on:
+      - db
+      - redis-cache
+      - redis-queue
 
     ports:
       - "8000:8000"
+
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - REDIS_SOCKETIO=redis-cache:6379
+      - SITE_NAME=site1.local
+      - INSTALL_APPS=erpnext,mail
 
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
 
+  db:
+    image: mariadb:10.6
+    container_name: frappe-db
+    restart: unless-stopped
+
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-log-bin
+
     environment:
-      - TZ=Africa/Addis_Ababa
-      - NODE_ENV=production
+      - MYSQL_ROOT_PASSWORD=frappe
+      - MYSQL_DATABASE=frappe
+    volumes:
+      - db-data:/var/lib/mysql
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: frappe-redis-cache
+    restart: unless-stopped
+
+  redis-queue:
+    image: redis:7-alpine
+    container_name: frappe-redis-queue
+    restart: unless-stopped
+
+  redis-socketio:
+    image: redis:7-alpine
+    container_name: frappe-redis-socketio
+    restart: unless-stopped
+
+  worker-default:
+    image: ghcr.io/mehariwamlake/mail:7915f7f3e76ec431af1a35167e932565815e0535
+    container_name: frappe-worker-default
+    restart: unless-stopped
+
+    command: bench worker --queue default
+
+    depends_on:
+      - backend
+      - redis-queue
+      - db
+
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  worker-short:
+    image: ghcr.io/mehariwamlake/mail:7915f7f3e76ec431af1a35167e932565815e0535
+    container_name: frappe-worker-short
+    restart: unless-stopped
+
+    command: bench worker --queue short
+
+    depends_on:
+      - backend
+      - redis-queue
+      - db
+
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+  scheduler:
+    image: ghcr.io/mehariwamlake/mail:7915f7f3e76ec431af1a35167e932565815e0535
+    container_name: frappe-scheduler
+    restart: unless-stopped
+
+    command: bench schedule
+
+    depends_on:
+      - backend
+      - db
+      - redis-queue
+
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
 
 volumes:
   sites:
   logs:
+  db-data:
