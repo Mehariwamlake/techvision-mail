@@ -97,7 +97,6 @@ services:
       - --skip-log-bin
     redis-cache:
       image: redis:7-alpine
-      container_name: frappe-redis-cache
       restart: unless-stopped
 
 
