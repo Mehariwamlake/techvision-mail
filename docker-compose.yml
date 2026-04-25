@@ -203,6 +203,11 @@ services:
   websocket:
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     restart: always
+    depends_on:
+      redis-cache:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
     networks:
       - frappe_network
     command: ["node", "/home/frappe/frappe-bench/apps/frappe/socketio.js"]
