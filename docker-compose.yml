@@ -22,10 +22,9 @@ services:
       - logs:/home/frappe/frappe-bench/logs
   configurator:
     user: root
-    image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
-    working_dir: /home/frappe/frappe-bench
-
     entrypoint: ["bash", "-lc"]
+    image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
+    working_dir: home/frappe/frappe-bench
     command: >
       set -e;
 
@@ -37,23 +36,24 @@ services:
         echo "frappe" > sites/apps.txt;
       fi;
 
-      bench set-config -g db_host "$DB_HOST";
-      bench set-config -gp db_port "$DB_PORT";
-      bench set-config -g redis_cache "redis://$REDIS_CACHE";
-      bench set-config -g redis_queue "redis://$REDIS_QUEUE";
-      bench set-config -g redis_socketio "redis://$REDIS_QUEUE";
-      bench set-config -gp socketio_port "$SOCKETIO_PORT";
 
-  environment:
-    DB_HOST: ${DB_HOST}
-    DB_PORT: ${DB_PORT}
-    REDIS_CACHE: ${REDIS_CACHE}
-    REDIS_QUEUE: ${REDIS_QUEUE}
-    SOCKETIO_PORT: ${SOCKETIO_PORT}
+      bench set-config -g db_host \"$DB_HOST\";
+      bench set-config -gp db_port \"$DB_PORT\";
+      bench set-config -g redis_cache \"redis://$REDIS_CACHE\";
+      bench set-config -g redis_queue \"redis://$REDIS_QUEUE\";
+      bench set-config -g redis_socketio \"redis://$REDIS_QUEUE\";
+      bench set-config -gp socketio_port \"$SOCKETIO_PORT\";"_QUEUE\";
+      bench set-config -gp socketio_port \"$SOCKETIO_PORT\";"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      REDIS_CACHE: ${REDIS_CACHE}
+      REDIS_QUEUE: ${REDIS_QUEUE}
+      SOCKETIO_PORT: ${SOCKETIO_PORT}
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
 
-  volumes:
-    - sites:/home/frappe/frappe-bench/sites
-    - logs:/home/frappe/frappe-bench/logs
 
   create-site:
     user: root
