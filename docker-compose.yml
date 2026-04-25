@@ -23,16 +23,16 @@ services:
   command: |
     set -euxo pipefail
 
-    working_dir=/home/frappe/frappe-bench/sites
+    SITE_DIR=/home/frappe/frappe-bench/sites
 
     echo "== Ensuring sites folder =="
-    mkdir -p $working_dir
+    mkdir -p $SITE_DIR
 
     echo "== Creating apps.txt =="
     if [ -d apps ] && [ "$(ls -A apps)" ]; then
-      ls -1 apps > $working_dir/apps.txt
+      ls -1 apps > $SITE_DIR/apps.txt
     else
-      echo "frappe" > $working_dir/apps.txt
+      echo "frappe" > $SITE_DIR/apps.txt
     fi
 
     echo "== Writing bench config =="
@@ -44,7 +44,7 @@ services:
     bench set-config -g socketio_port "$SOCKETIO_PORT"
 
     echo "== FINAL CONFIG =="
-    cat $working_dir/common_site_config.json || true
+    cat $SITE_DIR/common_site_config.json || true
         echo "DONE"
 
   create-site:
@@ -55,22 +55,21 @@ services:
 
     command:
       - |
-        set -e
+        SITE_DIR=/home/frappe/frappe-bench/sites
 
         echo "Waiting for config file..."
 
-        while [ ! -f sites/common_site_config.json ]; do
+        until [ -f "$SITE_DIR/common_site_config.json" ]; do
           sleep 3
         done
 
         echo "Config found, waiting for keys..."
 
-        until jq -e '.db_host' sites/common_site_config.json >/dev/null 2>&1; do
+        until jq -e '.db_host and .redis_cache and .redis_queue' "$SITE_DIR/common_site_config.json" >/dev/null 2>&1; do
           sleep 3
         done
 
         echo "Creating site..."
-        
 
         bench new-site \
           --mariadb-user-host-login-scope='%' \
