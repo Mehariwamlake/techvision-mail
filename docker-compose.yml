@@ -22,7 +22,7 @@ services:
       - logs:/home/frappe/frappe-bench/logs
   configurator:
     user: root
-    entrypoint: ["bash", "-lc"]
+    entrypoint: ["bash", "-c"]
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     command: >
       set -e;
