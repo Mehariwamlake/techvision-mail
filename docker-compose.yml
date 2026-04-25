@@ -3,7 +3,7 @@ version: "3.8"
 services:
 
   backend:
-    image: ghcr.io/mehariwamlake/mail:3face6225ddc72cb7d3a09382de17d0215f41c60
+    image: ${FRAPPE_IMAGE}
     container_name: frappe-backend
     restart: unless-stopped
 
@@ -12,27 +12,45 @@ services:
       - redis-cache
       - redis-queue
       - redis-socketio
-      - site-setup
 
     ports:
       - "8000:8000"
 
+    working_dir: /home/frappe/frappe-bench
+
+    command: >
+      bash -lc "bench serve --port 8000"
+
     environment:
-      SITE_NAME: mail.techvision.edu.et
-      DB_HOST: db
-      DB_PORT: 3306
+      SITE_NAME: ${SITE_NAME}
       REDIS_CACHE: redis-cache:6379
       REDIS_QUEUE: redis-queue:6379
       REDIS_SOCKETIO: redis-socketio:6379
-
-    working_dir: /home/frappe/frappe-bench
-
-    command: bench start
 
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
 
+
+  socketio:
+    image: ${FRAPPE_IMAGE}
+    container_name: frappe-socketio
+    restart: unless-stopped
+
+    working_dir: /home/frappe/frappe-bench
+
+    command: node apps/frappe/socketio.js
+
+    environment:
+      REDIS_CACHE: redis-cache:6379
+      REDIS_QUEUE: redis-queue:6379
+      REDIS_SOCKETIO: redis-socketio:6379
+
+    ports:
+      - "9000:9000"
+
+    depends_on:
+      - redis-socketio
 
   # ----------------------------
   # SITE CREATION (IMPORTANT FIX)
@@ -70,7 +88,6 @@ services:
 
   db:
     image: mariadb:10.6
-    container_name: frappe-db
     restart: unless-stopped
 
     command:
@@ -79,12 +96,11 @@ services:
       - --skip-log-bin
 
     environment:
-      MYSQL_ROOT_PASSWORD: frappe
-      MYSQL_DATABASE: frappe
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
 
     volumes:
       - db-data:/var/lib/mysql
-
 
   redis-cache:
     image: redis:7-alpine
@@ -105,47 +121,38 @@ services:
 
 
   worker-default:
-    image: ghcr.io/mehariwamlake/mail:3face6225ddc72cb7d3a09382de17d0215f41c60
-    container_name: frappe-worker-default
+    image: ${FRAPPE_IMAGE}
+    command: bench worker --queue default
+    working_dir: /home/frappe/frappe-bench
     restart: unless-stopped
 
-    working_dir: /home/frappe/frappe-bench
-
-    command: bench worker --queue default
-
     depends_on:
-      - db
       - redis-queue
+      - db
 
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
 
   worker-short:
-    image: ghcr.io/mehariwamlake/mail:3face6225ddc72cb7d3a09382de17d0215f41c60
-    container_name: frappe-worker-short
+    image: ${FRAPPE_IMAGE}
+    command: bench worker --queue short
+    working_dir: /home/frappe/frappe-bench
     restart: unless-stopped
 
-    working_dir: /home/frappe/frappe-bench
-
-    command: bench worker --queue short
-
     depends_on:
-      - db
       - redis-queue
+      - db
 
     volumes:
       - sites:/home/frappe/frappe-bench/sites
 
 
   scheduler:
-    image: ghcr.io/mehariwamlake/mail:3face6225ddc72cb7d3a09382de17d0215f41c60
-    container_name: frappe-scheduler
-    restart: unless-stopped
-
-    working_dir: /home/frappe/frappe-bench
-
+    image: ${FRAPPE_IMAGE}
     command: bench schedule
+    working_dir: /home/frappe/frappe-bench
+    restart: unless-stopped
 
     depends_on:
       - db
