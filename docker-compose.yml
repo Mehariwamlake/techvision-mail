@@ -23,6 +23,8 @@ services:
 
   configurator:
     entrypoint: ["bash", "-lc"]
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
+    working_dir: /home/frappe/frap
     command: >
       "set -e;
       ls -1 apps > sites/apps.txt;
