@@ -56,7 +56,7 @@ services:
   # SITE CREATION (IMPORTANT FIX)
   # ----------------------------
   site-setup:
-    image: ghcr.io/mehariwamlake/mail:3face6225ddc72cb7d3a09382de17d0215f41c60
+    image: ${FRAPPE_IMAGE}
     container_name: frappe-site-setup
     restart: "no"
 
@@ -64,48 +64,41 @@ services:
 
     depends_on:
       - db
-      - redis-cache
-      - redis-queue
 
-    command: bash -lc "
-      set -e
+    command: >
+      bash -lc "
+      set -e;
 
-      echo 'Creating site...'
+      echo 'Waiting for DB...';
+      sleep 20;
 
-      bench new-site mail.techvision.edu.et \
-        --admin-password admin \
-        --mariadb-root-password frappe \
-        --install-app erpnext || true
+      bench new-site ${SITE_NAME}
+        --admin-password admin
+        --mariadb-root-password ${DB_ROOT_PASSWORD}
+        --db-host ${DB_HOST} || true;
 
-      bench --site mail.techvision.edu.et install-app mail || true
+      bench --site ${SITE_NAME} install-app erpnext || true;
+      bench --site ${SITE_NAME} install-app mail || true;
 
-      echo 'Site setup complete'
+      echo 'DONE';
       "
-
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
 
 
   db:
     image: mariadb:10.6
-    restart: unless-stopped
-
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --skip-log-bin
 
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
 
-    volumes:
-      - db-data:/var/lib/mysql
-
-  redis-cache:
-    image: redis:7-alpine
-    container_name: frappe-redis-cache
-    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-log-bin
+    redis-cache:
+      image: redis:7-alpine
+      container_name: frappe-redis-cache
+      restart: unless-stopped
 
 
   redis-queue:
