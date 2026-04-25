@@ -66,19 +66,19 @@ services:
       - db
 
     command: >
-      bash -lc "
+      command: bash -lc "
       set -e;
 
-      echo 'Waiting for DB...';
-      sleep 20;
+      export MYSQL_PWD=${DB_ROOT_PASSWORD};
 
-      bench new-site ${SITE_NAME}
-        --admin-password admin
-        --mariadb-root-password ${DB_ROOT_PASSWORD}
-        --db-host ${DB_HOST} || true;
-
-      bench --site ${SITE_NAME} install-app erpnext || true;
-      bench --site ${SITE_NAME} install-app mail || true;
+      bench new-site mail.techvision.edu.et \
+        --admin-password admin \
+        --mariadb-root-password ${DB_ROOT_PASSWORD} \
+        --db-host db \
+        --install-app erpnext \
+        --install-app mail \
+        --force \
+        --no-input;
 
       echo 'DONE';
       "
