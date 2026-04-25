@@ -27,7 +27,7 @@ services:
     restart: "no"
     networks:
       - frappe_network
-    entrypoint: ["bash", "-lc"]
+    entrypoint: ["bash", "-c"]
     command: >
       set -e;
 
