@@ -15,99 +15,80 @@ services:
       DB_PORT: ${DB_PORT}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
-      REDIS_CACHE: redis://redis-cache:6379
-      REDIS_QUEUE: redis://redis-queue:6379
-      REDIS_SOCKETIO: redis://redis-queue:6379
     expose:
       - "8000"
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
   configurator:
-    user: frappe
+    user: root
+    entrypoint: ["bash", "-lc"]
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
-    working_dir: /home/frappe/frappe-bench
-    entrypoint: ["/bin/bash", "-c"]
-    command: |
-      set -e
+    working_dir: home/frappe/frappe-bench
+    command: >
+      set -e;
 
-      echo "Creating sites folder..."
-      mkdir -p sites
+      mkdir -p sites;
 
-      echo "Writing common_site_config.json..."
+      if [ -d apps ]; then
+        ls -1 apps > sites/apps.txt;
+      else
+        echo "frappe" > sites/apps.txt;
+      fi;
 
-      cat > sites/common_site_config.json <<EOF
-      {
-        "db_host": "${DB_HOST}",
-        "db_port": ${DB_PORT},
-        "redis_cache": "redis://${REDIS_CACHE}",
-        "redis_queue": "redis://${REDIS_QUEUE}",
-        "redis_socketio": "redis://${REDIS_QUEUE}",
-        "socketio_port": "${SOCKETIO_PORT}"
-      }
-      EOF
 
-      echo "Generating apps list..."
-      ls -1 apps > sites/apps.txt
-
-      echo "Configurator DONE"
+      bench set-config -g db_host \"$DB_HOST\";
+      bench set-config -gp db_port \"$DB_PORT\";
+      bench set-config -g redis_cache \"redis://$REDIS_CACHE\";
+      bench set-config -g redis_queue \"redis://$REDIS_QUEUE\";
+      bench set-config -g redis_socketio \"redis://$REDIS_QUEUE\";
+      bench set-config -gp socketio_port \"$SOCKETIO_PORT\";"_QUEUE\";
+      bench set-config -gp socketio_port \"$SOCKETIO_PORT\";"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      REDIS_CACHE: ${REDIS_CACHE}
+      REDIS_QUEUE: ${REDIS_QUEUE}
+      SOCKETIO_PORT: ${SOCKETIO_PORT}
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
-    networks:
-      - frappe_network
+
 
   create-site:
     user: root
+    entrypoint: ["bash", "-lc"]
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     working_dir: /home/frappe/frappe-bench
-    entrypoint: ["/bin/bash", "-c"]
-    depends_on:
-      - configurator
-      - db
-    command: |
-      set -e
+    command: >
+      "set -e;
 
-      echo "Waiting for config file..."
-      while [ ! -f sites/common_site_config.json ]; do
-        sleep 3
-      done
+      start=$(date +%s);
 
-      echo "Checking config content..."
-      cat sites/common_site_config.json
+      until [[ -n \"$(jq -r '.db_host // empty' sites/common_site_config.json)\" ]] &&
+            [[ -n \"$(jq -r '.redis_cache // empty' sites/common_site_config.json)\" ]] &&
+            [[ -n \"$(jq -r '.redis_queue // empty' sites/common_site_config.json)\" ]];
+      do
+        echo 'Waiting for config...';
+        sleep 5;
 
-      until jq -e '.db_host' sites/common_site_config.json >/dev/null 2>&1; do
-        echo "Waiting for db_host..."
-        sleep 3
-      done
+        if (( $(date +%s) - start > 120 )); then
+          echo 'Config not found';
+          exit 1;
+        fi
+      done;
 
-      echo "Waiting for DB..."
-      until mysqladmin ping -h "$DB_HOST" --password="$MYSQL_ROOT_PASSWORD" --silent; do
-        sleep 3
-      done
-
-      echo "Creating site..."
-
-      bench new-site "$SITE_NAME" \
+      bench new-site \
         --mariadb-user-host-login-scope='%' \
-        --admin-password="$ADMIN_PASSWORD" \
+        --admin-password=\"$ADMIN_PASSWORD\" \
         --db-root-username=root \
-        --db-root-password="$MYSQL_ROOT_PASSWORD" \
+        --db-root-password=\"$MYSQL_ROOT_PASSWORD\" \
         --install-app erpnext \
         --install-app mail \
-        --set-default
-
-      echo "Site creation DONE"
-    environment:
-      DB_HOST: ${DB_HOST}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      SITE_NAME: ${SITE_NAME}
+        --set-default \"$SITE_NAME\";"
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
-    networks:
-      - frappe_network
   db:
     image: mariadb:10.8
     restart: always
