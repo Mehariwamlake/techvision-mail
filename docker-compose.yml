@@ -27,15 +27,7 @@ services:
 
     working_dir: /home/frappe/frappe-bench
 
-    command: >
-      /home/frappe/frappe-bench/env/bin/gunicorn frappe.app:application
-      --chdir /home/frappe/frappe-bench/sites
-      --bind 0.0.0.0:8000
-      --workers 2
-      --threads 4
-      --worker-class gthread
-      --timeout 120
-      --preload
+    command: bench start
 
     volumes:
       - sites:/home/frappe/frappe-bench/sites
