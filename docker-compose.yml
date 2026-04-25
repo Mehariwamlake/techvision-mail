@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
     restart: always
     working_dir: /home/frappe/frappe-bench
     networks:
@@ -22,7 +22,7 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   configurator:
-    image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
     working_dir: /home/frappe/frappe-bench
     restart: "no"
     networks:
@@ -50,7 +50,7 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   create-site:
-    image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
     working_dir: /home/frappe/frappe-bench
     restart: "no"
     networks:
@@ -115,7 +115,7 @@ services:
       - db-data:/var/lib/mysql
 
   frontend:
-    image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
     restart: always
     depends_on:
       - websocket
@@ -140,7 +140,7 @@ services:
       - "8080:8080"
 
   queue-long:
-    image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
     restart: always
     working_dir: /home/frappe/frappe-bench
     networks:
@@ -157,7 +157,7 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   queue-short:
-    image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
     restart: always
     working_dir: /home/frappe/frappe-bench
     networks:
@@ -187,7 +187,7 @@ services:
       - frappe_network
 
   scheduler:
-    image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
     restart: always
     working_dir: /home/frappe/frappe-bench
     networks:
@@ -201,7 +201,7 @@ services:
       - logs:/home/frappe/frappe-bench/logs
 
   websocket:
-    image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
+    image: ghcr.io/mehariwamlake/mail:55b58c01f5a4cdf3d6879f8eea3154b7bc475d5b
     restart: always
     networks:
       - frappe_network
