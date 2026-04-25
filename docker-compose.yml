@@ -24,8 +24,7 @@ services:
     user: frappe
     image: ghcr.io/mehariwamlake/mail:6fc7789b69f8d588ed01dfee6cfcc90829e9c4d9
     working_dir: /home/frappe/frappe-bench
-    entrypoint: ["bash", "-lc"]
-
+    entrypoint: /bin/bash
     command: |
       set -e
 
