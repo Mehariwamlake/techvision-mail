@@ -181,10 +181,10 @@ services:
     working_dir: /home/frappe/frappe-bench
     networks:
       - frappe_network
-    entrypoint: ["bash", "-lc"]
-    command: >
-      cd /home/frappe/frappe-bench &&
-      bench schedule
+    command: ["bench", "schedule"]
+    depends_on:
+      - redis-cache
+      - redis-queue
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
