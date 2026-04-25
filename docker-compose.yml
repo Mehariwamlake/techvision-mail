@@ -27,7 +27,7 @@ services:
     restart: "no"
     networks:
       - frappe_network
-    entrypoint: ["bash", "-c"]
+    entrypoint: ["bash", "-lc"]
     command: >
       set -e;
 
@@ -62,7 +62,9 @@ services:
         condition: service_started
       redis-queue:
         condition: service_started
-    entrypoint: ["bash", "-c"]
+      configurator:
+        condition: service_completed_successfully
+    entrypoint: ["bash", "-lc"]
     command: >
       set -e;
 
