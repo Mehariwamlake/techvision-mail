@@ -133,16 +133,16 @@ services:
     working_dir: /home/frappe/frappe-bench
     networks:
       - frappe_network
-    entrypoint: ["bash", "-lc"]
-    command: >
-      cd /home/frappe/frappe-bench &&
-      bench worker --queue long,default,short
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
+    command: ["bench", "worker", "--queue", "long,default,short"]
+    depends_on:
+      - redis-cache
+      - redis-queue
     environment:
       FRAPPE_REDIS_CACHE: redis://${REDIS_CACHE}
       FRAPPE_REDIS_QUEUE: redis://${REDIS_QUEUE}
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
 
   queue-short:
     image: ghcr.io/mehariwamlake/mail:f3c8a983319085ed630bda270f9588f74bd05aed
@@ -150,17 +150,16 @@ services:
     working_dir: /home/frappe/frappe-bench
     networks:
       - frappe_network
-    entrypoint: ["bash", "-lc"]
-    command: >
-      cd /home/frappe/frappe-bench &&
-      bench worker --queue short,default
-    volumes:
-      - sites:/home/frappe/frappe-bench/sites
-      - logs:/home/frappe/frappe-bench/logs
+    command: ["bench", "worker", "--queue", "short,default"]
+    depends_on:
+      - redis-cache
+      - redis-queue
     environment:
       FRAPPE_REDIS_CACHE: redis://${REDIS_CACHE}
       FRAPPE_REDIS_QUEUE: redis://${REDIS_QUEUE}
-
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
   redis-queue:
     image: redis:6.2-alpine
     restart: always
